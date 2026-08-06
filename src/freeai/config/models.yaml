@@ -1,0 +1,172 @@
+# FreeAI — Model Configuration & Fallback Topology
+
+model_list:
+  # =========================================================================
+  # 1. SPECIFIC PROVIDER MODELS (Unique IDs for direct API access)
+  # =========================================================================
+
+  # --- Google Gemini Series ---
+  - model_name: "gemini-3.5-flash"
+    litellm_params:
+      model: "gemini/gemini-3.5-flash"
+
+  - model_name: "gemini-3.1-flash-lite"
+    litellm_params:
+      model: "gemini/gemini-3.1-flash-lite"
+
+  - model_name: "gemini-3-flash"
+    litellm_params:
+      model: "gemini/gemini-3-flash-preview"
+
+  - model_name: "gemma-4-31b"
+    litellm_params:
+      model: "gemini/gemma-4-31b-it"
+
+  - model_name: "gemma-4-26b"
+    litellm_params:
+      model: "gemini/gemma-4-26b-a4b-it"
+
+  - model_name: "gemini-embedding-2"
+    litellm_params:
+      model: "gemini/gemini-embedding-2"
+
+  - model_name: "gemini-3.1-flash-tts"
+    litellm_params:
+      model: "gemini/gemini-3.1-flash-tts"
+
+  - model_name: "gemini-2.5-flash-tts"
+    litellm_params:
+      model: "gemini/gemini-2.5-flash-tts"
+
+  # --- Groq Provider Series ---
+  - model_name: "groq-llama-3.3-70b"
+    litellm_params:
+      model: "groq/llama-3.3-70b-versatile"
+
+  - model_name: "groq-compound"
+    litellm_params:
+      model: "groq/groq/compound"
+
+  - model_name: "groq-compound-mini"
+    litellm_params:
+      model: "groq/groq/compound-mini"
+
+  - model_name: "groq-gpt-oss-120b"
+    litellm_params:
+      model: "groq/openai/gpt-oss-120b"
+
+  - model_name: "groq-gpt-oss-20b"
+    litellm_params:
+      model: "groq/openai/gpt-oss-20b"
+
+  - model_name: "groq-qwen3.6-27b"
+    litellm_params:
+      model: "groq/qwen/qwen3.6-27b"
+
+  - model_name: "whisper-large-v3"
+    litellm_params:
+      model: "groq/whisper-large-v3"
+
+  - model_name: "whisper-large-v3-turbo"
+    litellm_params:
+      model: "groq/whisper-large-v3-turbo"
+
+  # --- OpenRouter Free Models ---
+  - model_name: "openrouter-gpt-oss-120b"
+    litellm_params:
+      model: "openrouter/openai/gpt-oss-120b:free"
+
+  - model_name: "openrouter-gpt-oss-20b"
+    litellm_params:
+      model: "openrouter/openai/gpt-oss-20b:free"
+
+  - model_name: "openrouter-qwen3-coder"
+    litellm_params:
+      model: "openrouter/qwen/qwen3-coder:free"
+
+  - model_name: "openrouter-qwen3-next-80b"
+    litellm_params:
+      model: "openrouter/qwen/qwen3-next-80b-a3b-instruct:free"
+
+  - model_name: "openrouter-nemotron-3-super-120b"
+    litellm_params:
+      model: "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
+
+  - model_name: "openrouter-nemotron-3-nano-reasoning"
+    litellm_params:
+      model: "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+
+  - model_name: "openrouter-nemotron-3-nano"
+    litellm_params:
+      model: "openrouter/nvidia/nemotron-3-nano-30b-a3b:free"
+
+  - model_name: "openrouter-laguna-m.1"
+    litellm_params:
+      model: "openrouter/poolside/laguna-m.1:free"
+
+  - model_name: "openrouter-llama-nemotron-embed"
+    litellm_params:
+      model: "openrouter/nvidia/llama-nemotron-embed-vl-1b-v2:free"
+
+  # =========================================================================
+  # 2. CATEGORY ALIASES (Virtual router shortcuts for client applications)
+  # =========================================================================
+
+  - model_name: "chat"
+    litellm_params:
+      model: "gemini/gemini-3.5-flash"
+
+  - model_name: "fast"
+    litellm_params:
+      model: "gemini/gemini-3.1-flash-lite"
+
+  - model_name: "large"
+    litellm_params:
+      model: "gemini/gemma-4-31b-it"
+
+  - model_name: "coder"
+    litellm_params:
+      model: "openrouter/qwen/qwen3-coder:free"
+
+  - model_name: "reasoning"
+    litellm_params:
+      model: "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+
+  - model_name: "embed"
+    litellm_params:
+      model: "gemini/gemini-embedding-2"
+
+  - model_name: "tts"
+    litellm_params:
+      model: "gemini/gemini-3.1-flash-tts"
+
+  - model_name: "stt"
+    litellm_params:
+      model: "groq/whisper-large-v3"
+
+# =========================================================================
+# 3. ROUTER SETTINGS & DETERMINISTIC FALLBACK CHAINS
+# =========================================================================
+
+router_settings:
+  routing_strategy: "usage-based-routing-v2"
+  num_retries: 2
+  allowed_fails: 1
+  cooldown_time: 60
+
+  fallbacks:
+    # --- Category Alias Fallback Chains ---
+    - chat: ["groq-llama-3.3-70b", "openrouter-gpt-oss-120b"]
+    - fast: ["groq-compound-mini", "openrouter-gpt-oss-20b"]
+    - large: ["groq-compound", "openrouter-nemotron-3-super-120b"]
+    - coder: ["groq-qwen3.6-27b", "gemini-3.5-flash"]
+    - reasoning: ["groq-compound"]
+    - embed: ["openrouter-llama-nemotron-embed"]
+    - tts: ["gemini-2.5-flash-tts"]
+    - stt: ["whisper-large-v3-turbo"]
+
+    # --- Direct Model Fallback Chains ---
+    - gemini-3.5-flash: ["groq-llama-3.3-70b", "openrouter-gpt-oss-120b"]
+    - groq-llama-3.3-70b: ["gemini-3.5-flash", "openrouter-gpt-oss-120b"]
+    - gemini-3.1-flash-lite: ["groq-compound-mini", "openrouter-gpt-oss-20b"]
+    - openrouter-qwen3-coder: ["groq-qwen3.6-27b", "gemini-3.5-flash"]
