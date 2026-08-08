@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from litellm import Router
 
 from freeai.gateway.routes import router as v1_router
-from freeai.router import build_router
+from freeai.routing import build_router
 
 
 @asynccontextmanager

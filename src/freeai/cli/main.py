@@ -12,7 +12,7 @@ from freeai.config import get_all_provider_keys, get_settings
 
 app = typer.Typer(
     name="freeai",
-    help="FreeAI — Gateway de Inteligência Artificial com Roteamento Inteligente e Fallbacks",
+    help="FreeAI — Description coming soon...",
     add_completion=False,
 )
 

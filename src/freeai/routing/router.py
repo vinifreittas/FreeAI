@@ -9,7 +9,6 @@ from freeai.config import get_all_provider_keys, get_settings
 
 def build_router(config_path: Path | str | None = None) -> Router:
     """Carrega as configurações do models.yaml e instancia o litellm.Router.
-
     Args:
         config_path: Caminho opcional para o arquivo models.yaml.
                      Se omitido, utiliza o caminho padrão definido em Settings.

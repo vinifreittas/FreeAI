@@ -1,7 +1,7 @@
 import os
 
 from freeai.config import get_all_provider_keys, get_settings
-from freeai.router import build_router
+from freeai.routing import build_router
 
 
 def test_build_router_initialization():
