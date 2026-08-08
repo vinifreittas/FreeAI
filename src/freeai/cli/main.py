@@ -1,22 +1,22 @@
-import os
-from pathlib import Path
+import logging
 
 import typer
 import uvicorn
-import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from freeai.config import get_all_provider_keys, get_settings
+from freeai.config import get_settings
 
 app = typer.Typer(
     name="freeai",
-    help="FreeAI — Description coming soon...",
+    help="FreeAI — API Gateway & AI Routing CLI Engine",
     add_completion=False,
 )
 
 console = Console()
+
+logging.getLogger("LiteLLM").setLevel(logging.ERROR)
 
 
 @app.command()
@@ -49,109 +49,101 @@ def start(
 
 
 @app.command()
-def models(
-    config_path: Path | None = typer.Option(
-        None, "--config", "-c", help="Caminho para arquivo YAML de modelos alternativo"
-    ),
-) -> None:
-    """Lista os aliases de modelos configurados e os respectivos modelos backend."""
+def models() -> None:
+    """Lista os aliases configurados, seus alvos e os modelos/provedores disponíveis."""
     settings = get_settings()
-    target_path = config_path or settings.MODELS_CONFIG_PATH
 
-    if not target_path.exists():
-        console.print(f"[bold red]Arquivo de modelos não encontrado em {target_path}[/bold red]")
-        raise typer.Exit(code=1)
+    # Tabela 1: Aliases de Rotas
+    table_aliases = Table(title="Aliases de Rotas (Shortcuts)", show_header=True, header_style="bold magenta")
+    table_aliases.add_column("Alias", style="bold cyan", width=16)
+    table_aliases.add_column("Modelo Alvo (Target ID)", style="green")
+    table_aliases.add_column("Provedor Backend", style="yellow")
+    table_aliases.add_column("Descrição", style="dim")
 
-    with open(target_path, encoding="utf-8") as f:
-        raw_config = yaml.safe_load(f) or {}
+    for alias in settings.aliases:
+        model, provider, _ = settings.resolve_alias(alias.alias)
+        target_id = alias.target_model_id
+        provider_name = provider.display_name if provider else "Não Encontrado"
+        description = alias.description or "-"
 
-    model_list = raw_config.get("model_list", [])
+        table_aliases.add_row(alias.alias, target_id, provider_name, description)
 
-    table = Table(title="Modelos & Aliases Configurados", show_header=True, header_style="bold magenta")
-    table.add_column("Alias", style="bold cyan", width=12)
-    table.add_column("Modelo Backend (LiteLLM)", style="green")
+    console.print(table_aliases)
+    console.print()
 
-    for item in model_list:
-        alias = item.get("model_name", "N/A")
-        litellm_model = item.get("litellm_params", {}).get("model", "N/A")
-        table.add_row(alias, litellm_model)
+    # Tabela 2: Provedores e Modelos
+    table_models = Table(title="Modelos Mapeados por Provedor", show_header=True, header_style="bold blue")
+    table_models.add_column("Provedor", style="bold yellow")
+    table_models.add_column("ID do Modelo", style="bold cyan")
+    table_models.add_column("Modelo Remoto (API)", style="green")
 
-    console.print(table)
+    for provider in settings.providers:
+        for model in provider.models:
+            table_models.add_row(provider.display_name, model.id, model.remote_model)
+
+    console.print(table_models)
 
 
 @app.command()
 def status() -> None:
-    """Exibe o status atual das configurações do Gateway e chaves de API dos provedores."""
+    """Exibe o status atual do Gateway, configurações e detecção de chaves de API."""
     settings = get_settings()
-    provider_keys = get_all_provider_keys()
 
     table = Table(title="Status do FreeAI Gateway", show_header=True, header_style="bold cyan")
-    table.add_column("Configuração", style="bold yellow")
+    table.add_column("Configuração / Componente", style="bold yellow")
     table.add_column("Valor / Status")
 
     table.add_row("Endereço Padrão", f"{settings.HOST}:{settings.PORT}")
     table.add_row(
-        "FreeAI Bearer Token", "[green]Configurado[/green]" if settings.FREEAI_API_KEY else "[red]Não configurado[/red]"
+        "FreeAI Bearer Token",
+        "[green]Configurado[/green]" if settings.FREEAI_API_KEY else "[yellow]Não configurado (Acesso Aberto)[/yellow]",
     )
-    table.add_row("Chaves Detectadas", f"{len(provider_keys)} chave(s) no .env/ambiente")
-    table.add_row("Arquivo de Modelos", str(settings.MODELS_CONFIG_PATH))
+    table.add_row("Arquivo de Configuração", str(settings.MODELS_CONFIG_PATH))
+    table.add_row("Provedores Carregados", str(len(settings.providers)))
+    table.add_row("Aliases Configurados", str(len(settings.aliases)))
 
     console.print(table)
 
 
 @app.command()
 def check(
-    alias: str | None = typer.Option(None, "--alias", "-a", help="Filtrar verificação por um alias específico"),
-    config_path: Path | None = typer.Option(
-        None, "--config", "-c", help="Caminho para arquivo YAML de modelos alternativo"
-    ),
+    alias: str | None = typer.Option(None, "--alias", "-a", help="Filtrar diagnóstico por um alias específico"),
 ) -> None:
-    """Executa diagnóstico de saúde e verificação de chaves dos modelos configurados."""
+    """Diagnóstico de saúde das variáveis de ambiente e chaves de API dos provedores."""
     settings = get_settings()
-    target_path = config_path or settings.MODELS_CONFIG_PATH
 
-    if not target_path.exists():
-        console.print(f"[bold red]Arquivo de modelos não encontrado em {target_path}[/bold red]")
-        raise typer.Exit(code=1)
-
-    with open(target_path, encoding="utf-8") as f:
-        raw_config = yaml.safe_load(f) or {}
-
-    model_list = raw_config.get("model_list", [])
-    provider_keys = get_all_provider_keys()
-
-    table = Table(
-        title="Diagnóstico de Saúde & Disponibilidade de Provedores", show_header=True, header_style="bold cyan"
-    )
-    table.add_column("Alias", style="bold magenta", width=12)
-    table.add_column("Modelo Backend", style="green")
+    table = Table(title="Diagnóstico de Disponibilidade de Provedores", show_header=True, header_style="bold cyan")
+    table.add_column("Alias / Entrada", style="bold magenta", width=16)
+    table.add_column("Modelo Alvo", style="green")
     table.add_column("Provedor", style="yellow")
-    table.add_column("Chave Esperada", style="blue")
+    table.add_column("Variável de Ambiente", style="blue")
     table.add_column("Status da Chave", style="bold")
 
-    for item in model_list:
-        item_alias = item.get("model_name", "N/A")
-        if alias and item_alias != alias:
+    aliases_to_check = [a for a in settings.aliases if not alias or a.alias == alias]
+
+    if not aliases_to_check and alias:
+        console.print(f"[bold red]Alias '{alias}' não foi encontrado na configuração.[/bold red]")
+        raise typer.Exit(code=1)
+
+    for item in aliases_to_check:
+        model, provider, _ = settings.resolve_alias(item.alias)
+
+        if not provider or not model:
+            table.add_row(
+                item.alias,
+                item.target_model_id,
+                "[red]Desconhecido[/red]",
+                "N/A",
+                "[red]Erro: Modelo/Provedor não mapeado[/red]",
+            )
             continue
 
-        litellm_model = item.get("litellm_params", {}).get("model", "N/A")
-        provider = litellm_model.split("/")[0] if "/" in litellm_model else "litellm"
+        api_key_env = provider.api_key_env
+        has_key = bool(provider.api_key)
 
-        expected_key = f"{provider.upper()}_API_KEY"
-        if provider.lower() == "openrouter":
-            expected_key = "OPENROUTER_API_KEY"
+        status_str = "[green]Pronto / Chave Presente[/green]" if has_key else "[red]Ausente / Chave Não Detectada[/red]"
 
-        has_key = (
-            expected_key in provider_keys
-            or expected_key in os.environ
-            or f"{provider.upper()}_KEY" in provider_keys
-            or f"{provider.upper()}_KEY" in os.environ
-        )
-        status_str = (
-            "[green]Pronto / Chave Presente[/green]" if has_key else "[yellow]Ausente / Chave Não Detectada[/yellow]"
-        )
-
-        table.add_row(item_alias, litellm_model, provider, expected_key, status_str)
+        table.add_row(item.alias, model.remote_model, provider.display_name, api_key_env, status_str)
 
     console.print(table)
 
