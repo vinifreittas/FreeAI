@@ -4,17 +4,14 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# =========================================================================
-# YAML-BASED DYNAMIC CONFIGURATION MODELS
-# =========================================================================
+# --- BASE & DYNAMIC MODELS ---
 
 
 class DynamicBaseModel(BaseModel):
-    """Base model that allows adding any new property without breaking."""
+    """Base model allowing arbitrary extra fields without validation errors."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -23,32 +20,16 @@ class MetaConfig(DynamicBaseModel):
     version: str = "1.0.0"
 
 
-class GlobalDefaults(DynamicBaseModel):
-    pass
+# Empty container aliases to eliminate redundant class boilerplate
+GlobalDefaults = DynamicBaseModel
+CacheSettings = DynamicBaseModel
+RateLimits = DynamicBaseModel
+PricingConfig = DynamicBaseModel
+ModelCapabilities = DynamicBaseModel
+ModelModalities = DynamicBaseModel
+ModelSpecs = DynamicBaseModel
 
-
-class CacheSettings(DynamicBaseModel):
-    pass
-
-
-class RateLimits(DynamicBaseModel):
-    pass
-
-
-class PricingConfig(DynamicBaseModel):
-    pass
-
-
-class ModelCapabilities(DynamicBaseModel):
-    pass
-
-
-class ModelModalities(DynamicBaseModel):
-    pass
-
-
-class ModelSpecs(DynamicBaseModel):
-    pass
+# --- DOMAIN MODELS ---
 
 
 class ModelConfig(DynamicBaseModel):
@@ -74,7 +55,7 @@ class ProviderConfig(DynamicBaseModel):
 
     @property
     def api_key(self) -> str | None:
-        """Extrai dinamicamente a chave de API do ambiente usando o nome configurado em `api_key_env`."""
+        """Dynamically extract the API key from the environment."""
         return os.getenv(self.api_key_env) if self.api_key_env else None
 
 
@@ -90,19 +71,17 @@ class RouterSettings(DynamicBaseModel):
     fallbacks: dict[str, list[str]] = Field(default_factory=dict)
 
 
-# =========================================================================
-# CENTRAL CONFIGURATION (Settings)
-# =========================================================================
+# --- CENTRAL CONFIGURATION ---
 
 
 class Settings(BaseSettings):
-    # --- ENVIRONMENT / SERVER VARIABLES ---
+    # Environment variables
     HOST: str = "0.0.0.0"
     PORT: int = 4000
     FREEAI_API_KEY: str = ""
     MODELS_CONFIG_PATH: Path = Path(__file__).parent / "models.yaml"
 
-    # --- YAML-LOADED SECTIONS ---
+    # YAML Sections
     meta: MetaConfig = Field(default_factory=MetaConfig)
     global_defaults: GlobalDefaults = Field(default_factory=GlobalDefaults)
     cache_settings: CacheSettings = Field(default_factory=CacheSettings)
@@ -117,59 +96,52 @@ class Settings(BaseSettings):
         case_sensitive=True,
     )
 
-    def __init__(self, **values: Any):
-        super().__init__(**values)
-        load_dotenv()
-
     @model_validator(mode="before")
     @classmethod
     def load_yaml_data(cls, data: Any) -> Any:
-        """Load and automatically merge YAML content into configuration before validation."""
-        if isinstance(data, dict):
-            yaml_path_str = data.get("MODELS_CONFIG_PATH") or os.getenv("MODELS_CONFIG_PATH")
-            yaml_path = Path(yaml_path_str) if yaml_path_str else Path(__file__).parent / "models.yaml"
+        """Merge YAML contents into configuration data before Pydantic validation."""
+        if not isinstance(data, dict):
+            return data
 
-            if yaml_path.exists():
-                with open(yaml_path, encoding="utf-8") as f:
-                    yaml_data = yaml.safe_load(f) or {}
-                    if isinstance(yaml_data, dict):
-                        for key, value in yaml_data.items():
-                            if key not in data or data[key] is None:
-                                data[key] = value
+        yaml_path_str = data.get("MODELS_CONFIG_PATH") or os.getenv("MODELS_CONFIG_PATH")
+        yaml_path = Path(yaml_path_str) if yaml_path_str else Path(__file__).parent / "models.yaml"
+
+        if yaml_path.exists():
+            yaml_data = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+            if isinstance(yaml_data, dict):
+                # Reverse merge: YAML populates missing keys without overwriting explicit inputs
+                return yaml_data | data
         return data
 
-    # --- APPLICATION HELPERS ---
-
+    # Helper methods using expressions and generators
     def get_provider(self, provider_id: str) -> ProviderConfig | None:
-        """Get provider configurations by ID."""
-        for provider in self.providers:
-            if provider.id == provider_id:
-                return provider
-        return None
+        """Retrieve a provider configuration by its ID."""
+        return next((p for p in self.providers if p.id == provider_id), None)
 
     def get_model_and_provider(self, model_id: str) -> tuple[ModelConfig | None, ProviderConfig | None]:
-        """Find model and its parent provider."""
-        for provider in self.providers:
-            for model in provider.models:
-                if model.id == model_id:
-                    return model, provider
-        return None, None
+        """Find a model and its associated parent provider."""
+        return next(
+            ((m, p) for p in self.providers for m in p.models if m.id == model_id),
+            (None, None),
+        )
 
     def resolve_alias(self, alias_name: str) -> tuple[ModelConfig | None, ProviderConfig | None, AliasConfig | None]:
-        """Resolve alias returning final model, provider, and alias overrides."""
-        for alias in self.aliases:
-            if alias.alias == alias_name:
-                model, provider = self.get_model_and_provider(alias.target_model_id)
-                if model and provider:
-                    return model, provider, alias
+        """Resolve an alias to its target model, provider, and override settings."""
+        alias = next((a for a in self.aliases if a.alias == alias_name), None)
+        if not alias:
+            return None, None, None
+
+        model, provider = self.get_model_and_provider(alias.target_model_id)
+        if model and provider:
+            return model, provider, alias
         return None, None, None
 
     def get_fallbacks_for(self, target_id: str) -> list[str]:
-        """Return the fallback list configured in YAML for a model or alias."""
+        """Return the configured fallbacks for a given model or alias ID."""
         return self.router_settings.fallbacks.get(target_id, [])
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """Cached, globally accessible singleton instance."""
+    """Cached singleton instance of the configuration settings."""
     return Settings()

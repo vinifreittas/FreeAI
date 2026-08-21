@@ -1,77 +1,61 @@
 import os
 from pathlib import Path
+from typing import Any
 
 from litellm import Router
 
-from freeai.config import get_settings
+from freeai.config import ProviderConfig, get_settings
+
+
+def _build_litellm_params(
+    provider: ProviderConfig,
+    remote_model: str,
+    extra_params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Construct standard parameters required by LiteLLM router models."""
+    params: dict[str, Any] = {
+        "model": f"{provider.id}/{remote_model}",
+        "api_key": provider.api_key,
+    }
+    if provider.base_url:
+        params["api_base"] = provider.base_url
+    if extra_params:
+        params.update(extra_params)
+    return params
 
 
 def build_router(config_path: Path | str | None = None) -> Router:
-    """Carrega as configurações dos modelos/provedores mapeados no Settings
-    e instancia o litellm.Router injetando sempre o ID do provedor no início.
-    """
+    """Build and initialize a LiteLLM Router instance using application settings."""
     settings = get_settings()
 
-    # 1. Injeta chaves de API detectadas nos provedores no ambiente
+    # 1. Sync provider API keys into environment variables
     for provider in settings.providers:
-        api_key = provider.api_key
-        if api_key and provider.api_key_env not in os.environ:
-            os.environ[provider.api_key_env] = api_key
+        if provider.api_key and provider.api_key_env not in os.environ:
+            os.environ[provider.api_key_env] = provider.api_key
 
-    model_list: list[dict] = []
+    # 2. Build model list for backend models
+    model_list = [
+        {
+            "model_name": model.id,
+            "litellm_params": _build_litellm_params(provider, model.remote_model, model.default_params),
+        }
+        for provider in settings.providers
+        for model in provider.models
+    ]
 
-    # 2. Constrói a model_list para Modelos Backend
-    for provider in settings.providers:
-        for model in provider.models:
-            # Injeção direta: <provider_id>/<remote_model>
-            litellm_model = f"{provider.id}/{model.remote_model}"
-
-            litellm_params = {
-                "model": litellm_model,
-                "api_key": provider.api_key,
-            }
-            if provider.base_url:
-                litellm_params["api_base"] = provider.base_url
-
-            if model.default_params:
-                litellm_params.update(model.default_params)
-
+    # 3. Append alias models
+    for alias in settings.aliases:
+        model, provider, _ = settings.resolve_alias(alias.alias)
+        if model and provider:
             model_list.append(
                 {
-                    "model_name": model.id,
-                    "litellm_params": litellm_params,
+                    "model_name": alias.alias,
+                    "litellm_params": _build_litellm_params(provider, model.remote_model, alias.override_params),
                 }
             )
 
-    # 3. Constrói a model_list para Aliases
-    for alias in settings.aliases:
-        target_model, target_provider, _ = settings.resolve_alias(alias.alias)
-        if not target_model or not target_provider:
-            continue
-
-        # Injeção direta: <provider_id>/<remote_model>
-        litellm_model = f"{target_provider.id}/{target_model.remote_model}"
-
-        litellm_params = {
-            "model": litellm_model,
-            "api_key": target_provider.api_key,
-        }
-        if target_provider.base_url:
-            litellm_params["api_base"] = target_provider.base_url
-
-        if alias.override_params:
-            litellm_params.update(alias.override_params)
-
-        model_list.append(
-            {
-                "model_name": alias.alias,
-                "litellm_params": litellm_params,
-            }
-        )
-
-    # 4. Formata Fallbacks
-    fallbacks_config = settings.router_settings.fallbacks or {}
-    fallbacks = [{source_model: target_list} for source_model, target_list in fallbacks_config.items()]
+    # 4. Format fallbacks directly into list of single-key dicts
+    fallbacks = [{src: targets} for src, targets in settings.router_settings.fallbacks.items()]
 
     return Router(
         model_list=model_list,

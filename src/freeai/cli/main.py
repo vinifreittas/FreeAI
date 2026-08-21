@@ -1,4 +1,5 @@
 import logging
+from typing import Annotated
 
 import typer
 import uvicorn
@@ -16,14 +17,16 @@ app = typer.Typer(
 
 console = Console()
 
-logging.getLogger("LiteLLM").setLevel(logging.ERROR)
+# Silence third-party loggers
+logging.getLogger("litellm").propagate = False
+logging.getLogger("litellm").disabled = True
 
 
 @app.command()
 def start(
-    host: str | None = typer.Option(None, "--host", "-h", help="Endereço IP para vincular o servidor"),
-    port: int | None = typer.Option(None, "--port", "-p", help="Porta para o servidor HTTP"),
-    reload: bool = typer.Option(False, "--reload", "-r", help="Habilitar auto-reload para desenvolvimento"),
+    host: Annotated[str | None, typer.Option("--host", "-h", help="Endereço IP para vincular o servidor")] = None,
+    port: Annotated[int | None, typer.Option("--port", "-p", help="Porta para o servidor HTTP")] = None,
+    reload: Annotated[bool, typer.Option("--reload", "-r", help="Habilitar auto-reload para desenvolvimento")] = False,
 ) -> None:
     """Inicia o servidor API Gateway FreeAI."""
     settings = get_settings()
@@ -61,12 +64,9 @@ def models() -> None:
     table_aliases.add_column("Descrição", style="dim")
 
     for alias in settings.aliases:
-        model, provider, _ = settings.resolve_alias(alias.alias)
-        target_id = alias.target_model_id
+        _, provider, _ = settings.resolve_alias(alias.alias)
         provider_name = provider.display_name if provider else "Não Encontrado"
-        description = alias.description or "-"
-
-        table_aliases.add_row(alias.alias, target_id, provider_name, description)
+        table_aliases.add_row(alias.alias, alias.target_model_id, provider_name, alias.description or "-")
 
     console.print(table_aliases)
     console.print()
@@ -93,11 +93,12 @@ def status() -> None:
     table.add_column("Configuração / Componente", style="bold yellow")
     table.add_column("Valor / Status")
 
-    table.add_row("Endereço Padrão", f"{settings.HOST}:{settings.PORT}")
-    table.add_row(
-        "FreeAI Bearer Token",
-        "[green]Configurado[/green]" if settings.FREEAI_API_KEY else "[yellow]Não configurado (Acesso Aberto)[/yellow]",
+    api_key_status = (
+        "[green]Configurado[/green]" if settings.FREEAI_API_KEY else "[yellow]Não configurado (Acesso Aberto)[/yellow]"
     )
+
+    table.add_row("Endereço Padrão", f"{settings.HOST}:{settings.PORT}")
+    table.add_row("FreeAI Bearer Token", api_key_status)
     table.add_row("Arquivo de Configuração", str(settings.MODELS_CONFIG_PATH))
     table.add_row("Provedores Carregados", str(len(settings.providers)))
     table.add_row("Aliases Configurados", str(len(settings.aliases)))
@@ -107,10 +108,18 @@ def status() -> None:
 
 @app.command()
 def check(
-    alias: str | None = typer.Option(None, "--alias", "-a", help="Filtrar diagnóstico por um alias específico"),
+    alias: Annotated[
+        str | None, typer.Option("--alias", "-a", help="Filtrar diagnóstico por um alias específico")
+    ] = None,
 ) -> None:
     """Diagnóstico de saúde das variáveis de ambiente e chaves de API dos provedores."""
     settings = get_settings()
+
+    aliases_to_check = [a for a in settings.aliases if not alias or a.alias == alias]
+
+    if alias and not aliases_to_check:
+        console.print(f"[bold red]Alias '{alias}' não foi encontrado na configuração.[/bold red]")
+        raise typer.Exit(code=1)
 
     table = Table(title="Diagnóstico de Disponibilidade de Provedores", show_header=True, header_style="bold cyan")
     table.add_column("Alias / Entrada", style="bold magenta", width=16)
@@ -118,12 +127,6 @@ def check(
     table.add_column("Provedor", style="yellow")
     table.add_column("Variável de Ambiente", style="blue")
     table.add_column("Status da Chave", style="bold")
-
-    aliases_to_check = [a for a in settings.aliases if not alias or a.alias == alias]
-
-    if not aliases_to_check and alias:
-        console.print(f"[bold red]Alias '{alias}' não foi encontrado na configuração.[/bold red]")
-        raise typer.Exit(code=1)
 
     for item in aliases_to_check:
         model, provider, _ = settings.resolve_alias(item.alias)
@@ -138,12 +141,11 @@ def check(
             )
             continue
 
-        api_key_env = provider.api_key_env
-        has_key = bool(provider.api_key)
+        status_str = (
+            "[green]Pronto / Chave Presente[/green]" if provider.api_key else "[red]Ausente / Chave Não Detectada[/red]"
+        )
 
-        status_str = "[green]Pronto / Chave Presente[/green]" if has_key else "[red]Ausente / Chave Não Detectada[/red]"
-
-        table.add_row(item.alias, model.remote_model, provider.display_name, api_key_env, status_str)
+        table.add_row(item.alias, model.remote_model, provider.display_name, provider.api_key_env, status_str)
 
     console.print(table)
 

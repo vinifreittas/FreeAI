@@ -1,3 +1,3 @@
-from freeai.config.settings import Settings, get_settings
+from freeai.config.settings import ProviderConfig, Settings, get_settings
 
-__all__ = ["Settings", "get_settings"]
+__all__ = ["ProviderConfig", "Settings", "get_settings"]

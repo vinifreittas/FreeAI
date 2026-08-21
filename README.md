@@ -1,9 +1,10 @@
-A ideia desse projeto é facilitar o acesso e uso de APIs de IA gratuitamente, onde ele irá utilizar APIs que disponibilizam seus modelos de IA de forma gratuitamente e centralizará tudo em uma API Gateway inteligente.
+O projeto é um proxy inteligente para LLMs gratuitas, desenvolvido como uma personalização do LiteLLM Proxy — pré-configurado, mais inteligente e com uma interface renovada.
 
-O objetivo é garantir que o cliente nunca fique na mão, mesmo que uma IA esteja fora do ar, ele terá acesso a outras IAs.
+O objetivo é simplificar o acesso a APIs de IA gratuitas, centralizando múltiplos provedores em um único API Gateway inteligente. Dessa forma, garantimos alta disponibilidade: caso um serviço fique fora do ar, as requisições são redirecionadas automaticamente para outros modelos disponíveis.
 
 As IAs que serão utilizadas são:
 - Gemini (Google): https://ai.google.dev/
 - Groq: https://groq.com/
 - Openrouter: https://openrouter.ai/
-- Github Copilot: https://github.com/features/copilot
+- Cloudflare workers AI: https://www.cloudflare.com/products/workers-ai/
+- Nvidia NIM: https://build.nvidia.com/

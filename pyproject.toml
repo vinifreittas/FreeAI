@@ -41,8 +41,7 @@ dev = [
     "pre-commit",
     "ruff",
     "deadcode",
-    "pytest",
-    "agno"
+    "pytest"
 ]
 
 # --- Hatch Configuration ---
