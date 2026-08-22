@@ -137,8 +137,24 @@ class Settings(BaseSettings):
         return None, None, None
 
     def get_fallbacks_for(self, target_id: str) -> list[str]:
-        """Return the configured fallbacks for a given model or alias ID."""
-        return self.router_settings.fallbacks.get(target_id, [])
+        """Return explicit and dynamic similarity-based fallbacks for a given model or alias ID."""
+        explicit = self.router_settings.fallbacks.get(target_id, [])
+
+        model, _ = self.get_model_and_provider(target_id)
+        if not model:
+            model, _, _ = self.resolve_alias(target_id)
+
+        target_type = model.type if model and model.type else "chat"
+
+        # Discover dynamic fallback candidates by matching capability/type
+        dynamic = [
+            m.id
+            for p in self.providers
+            for m in p.models
+            if m.id != target_id and (m.type == target_type or (not m.type and target_type == "chat"))
+        ]
+
+        return list(dict.fromkeys(explicit + dynamic))
 
 
 @lru_cache

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Annotated
 
@@ -8,6 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from freeai.config import get_settings
+from freeai.routing import build_router
 
 app = typer.Typer(
     name="freeai",
@@ -148,6 +150,31 @@ def check(
         table.add_row(item.alias, model.remote_model, provider.display_name, provider.api_key_env, status_str)
 
     console.print(table)
+
+
+@app.command()
+def ping(
+    alias: Annotated[str, typer.Option("--alias", "-a", help="Alias ou ID do modelo para testar")] = "chat",
+    prompt: Annotated[str, typer.Option("--prompt", "-p", help="Prompt curto para enviar")] = "Responder apenas 'OK'.",
+) -> None:
+    """Envia uma requisição de teste para o modelo/alias especificado via Router."""
+    console.print(f"[bold cyan]Enviando ping para o modelo/alias '{alias}'...[/bold cyan]")
+    router = build_router()
+
+    async def _run() -> None:
+        try:
+            response = await router.acompletion(
+                model=alias,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=20,
+            )
+            content = response.choices[0].message.content
+            console.print(f"[bold green]✓ Sucesso![/bold green] Resposta: {content}")
+        except Exception as e:
+            console.print(f"[bold red]✗ Erro ao comunicar com '{alias}': {e}[/bold red]")
+            raise typer.Exit(code=1) from e
+
+    asyncio.run(_run())
 
 
 def main() -> None:

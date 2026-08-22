@@ -1,6 +1,4 @@
-O projeto é um proxy inteligente para LLMs gratuitas, desenvolvido como uma personalização do LiteLLM Proxy — pré-configurado, mais inteligente e com uma interface renovada.
-
-O objetivo é simplificar o acesso a APIs de IA gratuitas, centralizando múltiplos provedores em um único API Gateway inteligente. Dessa forma, garantimos alta disponibilidade: caso um serviço fique fora do ar, as requisições são redirecionadas automaticamente para outros modelos disponíveis.
+O projeto é um proxy inteligente para LLMs gratuitas, desenvolvido como uma personalização do LiteLLM Proxy — pré-configurado, mais inteligente (fallback por semelhança de modelos, escolha por aliases, cooldown personalizado) e com uma interface facilitada.
 
 As IAs que serão utilizadas são:
 - Gemini (Google): https://ai.google.dev/

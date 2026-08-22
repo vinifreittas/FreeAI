@@ -14,6 +14,10 @@ async def verify_bearer_token(
     """Verifica a presença e validade do token Bearer no cabeçalho Authorization."""
     settings = get_settings()
 
+    # Se a chave da API do FreeAI não estiver configurada no servidor, o acesso é aberto (desenvolvimento local)
+    if not settings.FREEAI_API_KEY:
+        return ""
+
     if not credentials or credentials.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -21,7 +25,7 @@ async def verify_bearer_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if not settings.FREEAI_API_KEY or not secrets.compare_digest(credentials.credentials, settings.FREEAI_API_KEY):
+    if not secrets.compare_digest(credentials.credentials, settings.FREEAI_API_KEY):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="API Key inválida",

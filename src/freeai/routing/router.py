@@ -54,8 +54,9 @@ def build_router(config_path: Path | str | None = None) -> Router:
                 }
             )
 
-    # 4. Format fallbacks directly into list of single-key dicts
-    fallbacks = [{src: targets} for src, targets in settings.router_settings.fallbacks.items()]
+    # 4. Format fallbacks for all aliases and direct model IDs
+    all_keys = {m.id for p in settings.providers for m in p.models} | {a.alias for a in settings.aliases}
+    fallbacks = [{key: settings.get_fallbacks_for(key)} for key in all_keys if settings.get_fallbacks_for(key)]
 
     return Router(
         model_list=model_list,
