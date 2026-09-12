@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "FreeAI"
 dynamic = ["version"]
-description = "Coming Soon..."
+description = "Pre-configured, intelligent API Gateway and LLM Router for free and freemium AI model providers"
 requires-python = ">=3.12"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Vinicius Freittas", email = "vinifreitas6465@gmail.com" }]
-keywords = ["AI"]
+keywords = ["ai", "llm", "api-gateway", "router", "litellm", "fastapi", "openai"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -28,14 +28,21 @@ dependencies = [
 ]
 
 [project.scripts]
-freeai = "freeai.__main__:main"
+freeai = "freeai.cli:app"
 
 [project.urls]
 Homepage = "https://github.com/vinifreittas/FreeAI"
 Bug-Tracker = "https://github.com/vinifreittas/FreeAI/issues"
 
 [dependency-groups]
-dev = ["pre-commit", "ruff", "deadcode", "pytest"]
+dev = [
+    "pre-commit", 
+    "ruff", 
+    "deadcode", 
+    "pytest", 
+    "pytest-asyncio",
+    "agno"
+]
 
 # --- Hatch Configuration ---
 
@@ -47,6 +54,13 @@ source = "vcs"
 
 [tool.hatch.version.raw-options]
 local_scheme = "no-local-version"
+
+# --- Pytest Configuration ---
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
 
 # --- Third-Party Tools ---
 

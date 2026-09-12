@@ -1,31 +1,22 @@
 # FreeAI — Model Configuration & Fallback Topology
 
-
 # =========================================================================
 # METADATA & GLOBAL SETTINGS
 # =========================================================================
 meta:
-  version: "2.1.0"
+  version: "1.0.0"
   environment: "production"
-  updated_at: "2026-08-08"
+  updated_at: "2026-09-12"
 
-global_defaults:
-  request_timeout_seconds: 45
-  temperature: 0.7
-  max_tokens: 4096
-  stream: false
-
-cache_settings:
-  enabled: true
-  strategy: "exact_match"
-  ttl_seconds: 3600
-
+router_settings:
+  num_retries: 2
+  minute_cooldown_seconds: 60
+  daily_cooldown_seconds: 86400
 
 # =========================================================================
 # PROVIDERS & SPECIFIC MODELS
 # =========================================================================
 providers:
-
   - id: "gemini"
     display_name: "Google AI Studio"
     website_url: "https://aistudio.google.com/"
@@ -33,35 +24,35 @@ providers:
     models:
       - id: "gemini-3.5-flash"
         remote_model: "gemini-3.5-flash"
-        type: "chat"
+        types: ["chat"]
 
       - id: "gemini-3.1-flash-lite"
         remote_model: "gemini-3.1-flash-lite"
-        type: "chat"
+        types: ["chat"]
 
       - id: "gemini-3-flash"
         remote_model: "gemini-3-flash-preview"
-        type: "chat"
+        types: ["chat"]
 
       - id: "gemma-4-31b"
         remote_model: "gemma-4-31b-it"
-        type: "chat"
+        types: ["chat"]
 
       - id: "gemma-4-26b"
         remote_model: "gemma-4-26b-a4b-it"
-        type: "chat"
+        types: ["chat"]
 
       - id: "gemini-embedding-2"
         remote_model: "gemini-embedding-2"
-        type: "embedding"
+        types: ["embedding"]
 
       - id: "gemini-3.1-flash-tts"
         remote_model: "gemini-3.1-flash-tts"
-        type: "tts"
+        types: ["tts"]
 
       - id: "gemini-2.5-flash-tts"
         remote_model: "gemini-2.5-flash-tts"
-        type: "tts"
+        types: ["tts"]
 
   - id: "groq"
     display_name: "Groq Cloud"
@@ -70,35 +61,35 @@ providers:
     models:
       - id: "groq-llama-3.3-70b"
         remote_model: "llama-3.3-70b-versatile"
-        type: "chat"
+        types: ["chat"]
 
       - id: "groq-compound"
         remote_model: "groq/compound"
-        type: "chat"
+        types: ["chat"]
 
       - id: "groq-compound-mini"
         remote_model: "groq/compound-mini"
-        type: "chat"
+        types: ["chat"]
 
       - id: "groq-gpt-oss-120b"
         remote_model: "openai/gpt-oss-120b"
-        type: "chat"
+        types: ["chat"]
 
       - id: "groq-gpt-oss-20b"
         remote_model: "openai/gpt-oss-20b"
-        type: "chat"
+        types: ["chat"]
 
       - id: "groq-qwen3.6-27b"
         remote_model: "qwen/qwen3.6-27b"
-        type: "chat"
+        types: ["chat"]
 
       - id: "whisper-large-v3"
         remote_model: "whisper-large-v3"
-        type: "stt"
+        types: ["stt"]
 
       - id: "whisper-large-v3-turbo"
         remote_model: "whisper-large-v3-turbo"
-        type: "stt"
+        types: ["stt"]
 
   - id: "openrouter"
     display_name: "OpenRouter"
@@ -107,120 +98,60 @@ providers:
     models:
       - id: "openrouter-gpt-oss-120b"
         remote_model: "openai/gpt-oss-120b:free"
-        type: "chat"
+        types: ["chat"]
 
       - id: "openrouter-gpt-oss-20b"
         remote_model: "openai/gpt-oss-20b:free"
-        type: "chat"
+        types: ["chat"]
 
       - id: "openrouter-qwen3-coder"
         remote_model: "qwen/qwen3-coder:free"
-        type: "code"
+        types: ["chat", "code"]
 
       - id: "openrouter-qwen3-next-80b"
         remote_model: "qwen/qwen3-next-80b-a3b-instruct:free"
-        type: "chat"
+        types: ["chat"]
 
       - id: "openrouter-nemotron-3-super-120b"
         remote_model: "nvidia/nemotron-3-super-120b-a12b:free"
-        type: "chat"
+        types: ["chat"]
 
       - id: "openrouter-nemotron-3-nano-reasoning"
         remote_model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
-        type: "reasoning"
+        types: ["reasoning"]
 
       - id: "openrouter-nemotron-3-nano"
-        remote_model: "nvidia/nvidia/nemotron-3-nano-30b-a3b:free"
-        type: "chat"
+        remote_model: "nvidia/nemotron-3-nano-30b-a3b:free"
+        types: ["chat"]
 
       - id: "openrouter-laguna-m.1"
         remote_model: "poolside/laguna-m.1:free"
-        type: "chat"
+        types: ["chat"]
 
       - id: "openrouter-llama-nemotron-embed"
         remote_model: "nvidia/llama-nemotron-embed-vl-1b-v2:free"
-        type: "embedding"
-
+        types: ["embedding"]
 
 # =========================================================================
 # VIRTUAL ROUTER ALIASES (Application Shortcuts)
 # =========================================================================
 aliases:
   - alias: "chat"
-    target_model_id: "gemini-3.5-flash"
     description: "Modelo padrão de chat geral de alta velocidade"
-
-  - alias: "fast"
-    target_model_id: "gemini-3.1-flash-lite"
-    description: "Modelo ultrarrápido para tarefas simples"
-
-  - alias: "large"
-    target_model_id: "gemma-4-31b"
-    description: "Modelo de grande porte para tarefas complexas"
+    models_types_to_chain: ["chat"]
 
   - alias: "coder"
-    target_model_id: "openrouter-qwen3-coder"
-    description: "Especializado em geração e análise de código"
-
-  - alias: "reasoning"
-    target_model_id: "openrouter-nemotron-3-nano-reasoning"
-    description: "Modelo otimizado para raciocínio lógico profundo"
+    description: "Geração e leitura de código"
+    models_types_to_chain: ["code"]
 
   - alias: "embed"
-    target_model_id: "gemini-embedding-2"
     description: "Geração de embeddings de texto"
+    models_types_to_chain: ["embedding"]
 
   - alias: "tts"
-    target_model_id: "gemini-3.1-flash-tts"
     description: "Conversão de texto para áudio (Text-to-Speech)"
+    models_types_to_chain: ["tts"]
 
   - alias: "stt"
-    target_model_id: "whisper-large-v3"
     description: "Transcrição de áudio para texto (Speech-to-Text)"
-
-
-# =========================================================================
-# ROUTER SETTINGS & DETERMINISTIC FALLBACK CHAINS
-# =========================================================================
-router_settings:
-  routing_strategy: "usage-based-routing-v2"
-  num_retries: 2
-  allowed_fails: 1
-  cooldown_time_seconds: 60
-
-  fallbacks:
-    # --- Aliases Fallbacks ---
-    chat:
-      - "groq-llama-3.3-70b"
-      - "openrouter-gpt-oss-120b"
-    fast:
-      - "groq-compound-mini"
-      - "openrouter-gpt-oss-20b"
-    large:
-      - "groq-compound"
-      - "openrouter-nemotron-3-super-120b"
-    coder:
-      - "groq-qwen3.6-27b"
-      - "gemini-3.5-flash"
-    reasoning:
-      - "groq-compound"
-    embed:
-      - "openrouter-llama-nemotron-embed"
-    tts:
-      - "gemini-2.5-flash-tts"
-    stt:
-      - "whisper-large-v3-turbo"
-
-    # --- Direct Model Fallbacks ---
-    gemini-3.5-flash:
-      - "groq-llama-3.3-70b"
-      - "openrouter-gpt-oss-120b"
-    groq-llama-3.3-70b:
-      - "gemini-3.5-flash"
-      - "openrouter-gpt-oss-120b"
-    gemini-3.1-flash-lite:
-      - "groq-compound-mini"
-      - "openrouter-gpt-oss-20b"
-    openrouter-qwen3-coder:
-      - "groq-qwen3.6-27b"
-      - "gemini-3.5-flash"
+    models_types_to_chain: ["stt"]

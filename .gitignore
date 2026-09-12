@@ -75,4 +75,4 @@ coverage.xml
 Thumbs.db
 
 # Extra
-/main.py
+/real-test.py

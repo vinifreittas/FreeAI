@@ -3,7 +3,7 @@ import secrets
 from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from freeai.config import get_settings
+from freeai.core import get_settings
 
 security = HTTPBearer(auto_error=False)
 
