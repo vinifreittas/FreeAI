@@ -7,6 +7,8 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from freeai.core.storage import load_vault
+
 
 class DynamicBaseModel(BaseModel):
     """Base model allowing arbitrary extra fields."""
@@ -43,8 +45,14 @@ class ProviderConfig(DynamicBaseModel):
 
     @property
     def api_key(self) -> str | None:
-        """Dynamically extract the API key from the environment."""
-        return os.getenv(self.api_key_env) if self.api_key_env else None
+        """Extract the API key from the protected vault or environment."""
+        if not self.api_key_env:
+            return None
+        vault = load_vault()
+        val = vault.get(self.api_key_env) or os.getenv(self.api_key_env)
+        if val:
+            os.environ[self.api_key_env] = val
+        return val
 
 
 class AliasConfig(DynamicBaseModel):
@@ -93,8 +101,6 @@ class Settings(BaseSettings):
     router_settings: RouterSettings = Field(default_factory=RouterSettings)
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
         extra="allow",
         case_sensitive=True,
     )
@@ -105,9 +111,15 @@ class Settings(BaseSettings):
         if not isinstance(data, dict):
             return data
 
+        vault = load_vault()
+        for k, v in vault.items():
+            if isinstance(v, str) and v:
+                os.environ[k] = v
+
         path_str = (
             data.get("SETTINGS_CONFIG_PATH")
             or data.get("MODELS_CONFIG_PATH")
+            or vault.get("SETTINGS_CONFIG_PATH")
             or os.getenv("SETTINGS_CONFIG_PATH")
             or os.getenv("MODELS_CONFIG_PATH")
         )
@@ -124,11 +136,15 @@ class Settings(BaseSettings):
             )
         )
 
+        merged: dict[str, Any] = {}
         if yaml_path and yaml_path.exists():
             yaml_data = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
             if isinstance(yaml_data, dict):
-                return yaml_data | data
-        return data
+                merged.update(yaml_data)
+
+        merged.update(vault)
+        merged.update(data)
+        return merged
 
     def get_provider(self, provider_id: str) -> ProviderConfig | None:
         return next((p for p in self.providers if p.id == provider_id), None)
@@ -141,7 +157,6 @@ def build_router_catalog(settings: Settings) -> ResolvedCatalog:
     """Builds the resolved catalog applying active provider filtering and type-matching fallback rules."""
     routes: dict[str, list[ResolvedTarget]] = {}
 
-    # Gather active targets in sequential order of config.yaml
     active_targets: list[ResolvedTarget] = []
     for provider in settings.providers:
         if not provider.api_key:
@@ -157,13 +172,11 @@ def build_router_catalog(settings: Settings) -> ResolvedCatalog:
                 )
             )
 
-    # 1. Specific Model Fallbacks (Strict 100% type match)
     for target in active_targets:
         target_types_set = set(target.types)
         fallbacks = [c for c in active_targets if c.target_id != target.target_id and set(c.types) == target_types_set]
         routes[target.target_id] = [target, *fallbacks]
 
-    # 2. Alias Fallbacks (Subset match of models_types_to_chain)
     for alias in settings.aliases:
         required_types_set = set(alias.models_types_to_chain)
         matching_targets = [c for c in active_targets if required_types_set.issubset(set(c.types))]
@@ -176,3 +189,9 @@ def build_router_catalog(settings: Settings) -> ResolvedCatalog:
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def reload_settings() -> Settings:
+    """Limpa cache e recarrega configurações atualizadas do vault."""
+    get_settings.cache_clear()
+    return get_settings()

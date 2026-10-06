@@ -17,18 +17,16 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "fastapi",
-    "uvicorn",
-    "litellm",
-    "pydantic-settings",
-    "typer",
-    "pyyaml",
-    "python-dotenv",
-    "rich",
+    "fastapi>=0.142.2",
+    "uvicorn>=0.54.0",
+    "litellm>=1.104.0",
+    "pydantic-settings>=2.15.0",
+    "pyyaml>=6.0.3",
+    "streamlit>=1.65.0",
 ]
 
 [project.scripts]
-freeai = "freeai.cli:app"
+freeai = "freeai.app:main"
 
 [project.urls]
 Homepage = "https://github.com/vinifreittas/FreeAI"
@@ -36,12 +34,12 @@ Bug-Tracker = "https://github.com/vinifreittas/FreeAI/issues"
 
 [dependency-groups]
 dev = [
-    "pre-commit", 
-    "ruff", 
-    "deadcode", 
-    "pytest", 
-    "pytest-asyncio",
-    "agno"
+    "pre-commit>=4.6.2",
+    "ruff>=0.16.10",
+    "deadcode>=2.4.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "agno>=3.1.1",
 ]
 
 # --- Hatch Configuration ---

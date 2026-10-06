@@ -35,6 +35,7 @@ MANIFEST
 .env
 .env.local
 .secret
+.freeai_vault.json
 *.pot
 
 # Database
@@ -75,4 +76,4 @@ coverage.xml
 Thumbs.db
 
 # Extra
-/real-test.py
+.agents

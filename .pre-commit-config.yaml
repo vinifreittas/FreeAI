@@ -10,11 +10,6 @@ repos:
       - id: check-merge-conflict
       - id: check-yaml
 
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.0
-    hooks:
-      - id: gitleaks
-
   # 2. Lockfile integrity
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.12.1

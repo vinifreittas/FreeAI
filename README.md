@@ -1,111 +1,66 @@
-# 🚀 FreeAI — Smart API Gateway & LLM Router
+# 🤖 FreeAI
 
-**FreeAI** é um API Gateway e LLM Router inteligente, pré-configurado, projetado para centralizar o acesso a modelos de IA de provedores gratuitos e freemium (Google Gemini, Groq, OpenRouter, etc.) em um único proxy local compatível com a especificação OpenAI REST API (`/v1`).
+> **API Gateway e LLM Router inteligente para provedores de IA gratuitos e freemium.**  
+> Unifique Google Gemini, Groq e OpenRouter em um único endpoint local compatível com a API OpenAI, com fallback automático e interface web.
 
----
-
-## ✨ Diferenciais Chave (v1.0.0)
-
-1. **Fallback Inteligente Automático:** Sem necessidade de tabelas estáticas manuais de fallback. O sistema constrói dinamicamente as filas de fallback com base nas capacidades e listas de **tipos** declaradas por cada modelo (`types: ["chat"]`, `["code"]`, `["embedding"]`, `["tts"]`, `["stt"]`).
-2. **Aliases Virtuais:** Roteamento simplificado através de aliases como `chat`, `coder`, `embed`, `tts` e `stt`, agrupando automaticamente todos os modelos elegíveis por ordem sequencial de declaração.
-3. **Resiliência Nativa em Memória:** Tratamento automático de Rate Limits (cooldown por minuto vs. diário), instabilidade de serviço (500/503) e desativação temporária por credenciais inválidas (401) ou modelos não encontrados (404).
-4. **Interface CLI Integrada:** Gerenciamento simples do proxy via `freeai start`, `freeai status`, `freeai models`, `freeai check` e `freeai ping`.
-5. **Compatibilidade Total OpenAI (`/v1`):** Funciona como um drop-in replacement para qualquer SDK compatível com OpenAI (Agno, Cursor, VS Code, LangChain, LlamaIndex, Python `openai`).
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![uv](https://img.shields.io/badge/managed_by-uv-DE5FE9.svg?logo=astral&logoColor=white)](https://docs.astral.sh/uv/)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## ⚡ Guia Rápido de Instalação e Uso
+## ⚡ Instalação e Execução
 
-### 1. Pré-requisitos
-* Python >= 3.12
-* [`uv`](https://github.com/astral-sh/uv) instalado
+Você pode executar o **FreeAI** diretamente sem precisar clonar o repositório:
 
-### 2. Instalação de Dependências
+### Com `uv` (Recomendado)
+
 ```bash
-git clone https://github.com/vinifreittas/FreeAI.git
-cd FreeAI
-uv sync
+uv tool install freeai
+freeai
 ```
 
-### 3. Configuração do Arquivo `.env`
-Copie o arquivo `.env.example` para `.env` e defina suas chaves de API dos provedores gratuitos:
+### Com `pip`
 
-```env
-HOST=0.0.0.0
-PORT=4000
-FREEAI_API_KEY=sua-chave-bearer-opcional
-
-# Chaves dos Provedores (Preencha as que desejar utilizar)
-GEMINI_API_KEY=sua-chave-google-ai-studio
-GROQ_API_KEY=sua-chave-groq-cloud
-OPENROUTER_API_KEY=sua-chave-openrouter
-```
-
-### 4. Executando o Proxy Gateway
 ```bash
-uv run freeai start
+pip install freeai
+freeai
 ```
-O servidor iniciará em `http://localhost:4000/v1`.
+
+Ao iniciar, o painel web abrirá automaticamente no navegador (`http://localhost:8501`) e o gateway de API estará ativo em segundo plano (`http://localhost:4000/v1`).
 
 ---
 
-## 🛠️ Comandos da CLI (`freeai`)
+## 🚀 Como Usar
 
-| Comando | Descrição |
-| :--- | :--- |
-| `uv run freeai start` | Inicia o servidor HTTP API Gateway (opções: `--host`, `--port`, `--reload`) |
-| `uv run freeai status` | Exibe o status da aplicação, host, porta, Bearer Token status e rotas do catálogo |
-| `uv run freeai models` | Exibe tabelas Rich com aliases resolvidos, cadeias de fallback e modelos por provedor |
-| `uv run freeai check` | Realiza diagnóstico de disponibilidade das variáveis de ambiente de cada provedor |
-| `uv run freeai ping` | Envia uma requisição de teste para o modelo/alias desejado (`--alias chat`) |
+1. **Configure suas chaves:** Abra a aba **Configurações** no painel web e insira suas chaves de API (Google Gemini, Groq ou OpenRouter). Suas credenciais são armazenadas de forma criptografada no seu cofre local (`~/.freeai/vault.json`).
+2. **Conecte suas aplicações:** Aponte qualquer biblioteca, IDE ou ferramenta para o FreeAI:
+   - **Base URL:** `http://localhost:4000/v1`
+   - **API Key:** `sk-freeai-local` (ou o Bearer token configurado)
+   - **Model:** `chat`, `coder` ou `embed` (com fallback automático se ocorrer rate limit)
 
----
+### Exemplo Rápido (Python)
 
-## 💡 Exemplos de Integração
-
-### Exemplo com SDK Oficial da OpenAI (Python)
 ```python
 from openai import OpenAI
 
-client = OpenAI(
-    base_url="http://localhost:4000/v1",
-    api_key="sk-freeai-local", # Ou sua FREEAI_API_KEY se configurada
-)
+client = OpenAI(base_url="http://localhost:4000/v1", api_key="sk-freeai-local")
 
 response = client.chat.completions.create(
-    model="chat",  # Usa o alias virtual 'chat' ou ID específico 'gemini-3.5-flash'
-    messages=[{"role": "user", "content": "Explique o conceito de API Gateway em poucas palavras."}],
+    model="chat",
+    messages=[{"role": "user", "content": "Olá, FreeAI!"}],
 )
 
 print(response.choices[0].message.content)
 ```
 
-### Exemplo de Streaming SSE
-```python
-response = client.chat.completions.create(
-    model="chat",
-    messages=[{"role": "user", "content": "Escreva um poema curto sobre resiliência."}],
-    stream=True,
-)
-
-for chunk in response:
-    if chunk.choices[0].delta.content:
-        print(chunk.choices[0].delta.content, end="", flush=True)
-```
+Compatível nativamente com **Cursor**, **VS Code (Cline / Continue)**, **LangChain**, **Agno** e qualquer ferramenta que suporte a API da OpenAI.
 
 ---
 
-## 🏗️ Arquitetura em Camadas
+## 🛠️ Para Desenvolvedores & Contribuidores
 
-```
-src/freeai/
-├── core/       # Configurações (config.yaml), Pydantic Settings & Algoritmo de Roteamento Inteligente
-├── services/   # Engine Resiliente (Router) com LiteLLM SDK puro e cooldowns em memória
-├── api/        # Servidor FastAPI e endpoints REST OpenAI (/v1)
-└── cli.py      # Interface de linha de comando Typer (start, models, status, check, ping)
-```
+Se você deseja rodar a partir do código-fonte, contribuir ou entender a arquitetura do projeto:
 
----
-
-## 📄 Licença
-Distribuído sob a licença MIT. Consulte `LICENSE` para mais detalhes.
+👉 Consulte o **[`AGENTS.md`](AGENTS.md)** 
