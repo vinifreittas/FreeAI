@@ -4,28 +4,35 @@ import sys
 import streamlit as st
 
 from freeai.api.gateway_manager import (
+    clear_gateway_cooldowns,
     get_gateway_info,
+    get_gateway_router,
     restart_gateway,
     start_gateway,
     stop_gateway,
 )
 from freeai.core import build_router_catalog, get_settings, load_vault, reload_settings, save_vault
-from freeai.services import Router
+from freeai.ui_snippets import key_input_with_status, render_client_snippets
+
+
+@st.cache_resource
+def _get_cached_settings():
+    return get_settings()
 
 
 def run_ui() -> None:
     st.set_page_config(page_title="FreeAI — Gateway & Router", page_icon="⚡", layout="wide")
 
-    # Inicialização automática do Gateway em segundo plano
+    # Automatically start Gateway in background
     if "gateway_auto_started" not in st.session_state:
         start_gateway()
         st.session_state["gateway_auto_started"] = True
 
-    settings = get_settings()
+    settings = _get_cached_settings()
     catalog = build_router_catalog(settings)
     info = get_gateway_info()
 
-    # --- BARRA LATERAL ---
+    # --- SIDEBAR ---
     with st.sidebar:
         st.title("⚡ FreeAI Gateway")
         with st.container(border=True):
@@ -54,55 +61,72 @@ def run_ui() -> None:
                 color = "green" if p.api_key else "gray"
                 st.markdown(f":{color}[:material/{icon}:] **{p.display_name}** ({len(p.models)} modelos)")
 
-    # --- ABAS PRINCIPAIS ---
+            router = get_gateway_router()
+            cd_data = (
+                router.get_cooldown_status()
+                if router
+                else {"cooldowns": {}, "disabled_models": [], "disabled_providers": []}
+            )
+            cd_count = len(cd_data["cooldowns"]) + len(cd_data["disabled_models"]) + len(cd_data["disabled_providers"])
+            if cd_count > 0:
+                st.warning(f"⚠️ {cd_count} modelo(s) em cooldown")
+                if st.button("Zerar Cooldowns", icon=":material/restart_alt:"):
+                    clear_gateway_cooldowns()
+                    st.rerun()
+
+    # --- MAIN TABS ---
     tab_overview, tab_settings, tab_playground = st.tabs(
-        [":material/dashboard: Visão geral", ":material/key: Configurações & chaves", ":material/chat: Playground"]
+        [":material/dashboard: Visão geral", ":material/key: Configurações & chaves", ":material/chat: Playground"],
+        on_change="rerun",
     )
 
-    with tab_overview:
-        m1, m2, m3, m4 = st.columns(4)
-        active_routes = len(catalog.routes)
-        active_providers = sum(1 for p in settings.providers if p.api_key)
-        bearer_status = "Protegido" if settings.FREEAI_API_KEY else "Acesso livre"
+    if tab_overview.open:
+        with tab_overview:
+            m1, m2, m3, m4 = st.columns(4)
+            active_routes = len(catalog.routes)
+            active_providers = sum(1 for p in settings.providers if p.api_key)
+            bearer_status = "Protegido" if settings.FREEAI_API_KEY else "Acesso livre"
 
-        m1.metric("Status do gateway", status_text)
-        m2.metric("Provedores ativos", f"{active_providers} / {len(settings.providers)}")
-        m3.metric("Rotas mapeadas", active_routes)
-        m4.metric("Autenticação Bearer", bearer_status)
+            m1.metric("Status do gateway", status_text)
+            m2.metric("Provedores ativos", f"{active_providers} / {len(settings.providers)}")
+            m3.metric("Rotas mapeadas", active_routes)
+            m4.metric("Autenticação Bearer", bearer_status)
 
-        st.subheader("Aliases e cadeias de fallback")
-        aliases_data = []
-        for alias in settings.aliases:
-            targets = catalog.get_targets(alias.alias)
-            chain = " ➔ ".join(t.litellm_model for t in targets) if targets else "Nenhum alvo ativo"
-            aliases_data.append(
-                {"Alias": alias.alias, "Tipos": ", ".join(alias.models_types_to_chain), "Fallback Chain": chain}
+            st.subheader("Aliases e cadeias de fallback")
+            aliases_data = [
+                {
+                    "Alias": a.alias,
+                    "Tipos": ", ".join(a.models_types_to_chain),
+                    "Fallback Chain": " ➔ ".join(t.litellm_model for t in catalog.get_targets(a.alias))
+                    or "Nenhum alvo ativo",
+                }
+                for a in settings.aliases
+            ]
+            st.dataframe(aliases_data, hide_index=True)
+            render_client_snippets(info["url"], settings.FREEAI_API_KEY)
+
+    if tab_settings.open:
+        with tab_settings:
+            st.subheader("Configurações persistentes protegidas")
+            st.caption(
+                "Salvo no cofre do usuário (~/.freeai/vault.json) com cifra derivada da máquina e permissão restrita 0600."
             )
-        st.dataframe(aliases_data, hide_index=True)
 
-    with tab_settings:
-        st.subheader("Configurações persistentes protegidas")
-        st.caption(
-            "Salvo no cofre do usuário (~/.freeai/vault.json) com cifra derivada da máquina e permissão restrita 0600."
-        )
-
-        vault = load_vault()
-        with st.form("vault_form"):
+            vault = load_vault()
             st.markdown("#### Chaves de API dos provedores")
-            g_key = st.text_input(
-                "Google AI Studio Key",
-                value=vault.get("GOOGLE_API_KEY", ""),
-                type="password",
-                help="Chave de api do Google AI Studio",
+            st.caption("Validadas automaticamente ao pressionar Enter. Salvas no cofre imediatamente.")
+            key_input_with_status(
+                "Google AI Studio Key", vault.get("GOOGLE_API_KEY", ""), "gemini", "GOOGLE_API_KEY", "g_key_input"
             )
-            groq_key = st.text_input(
-                "Groq Cloud Key", value=vault.get("GROQ_API_KEY", ""), type="password", help="Chave de api da Groq"
+            key_input_with_status(
+                "Groq Cloud Key", vault.get("GROQ_API_KEY", ""), "groq", "GROQ_API_KEY", "groq_key_input"
             )
-            or_key = st.text_input(
+            key_input_with_status(
                 "OpenRouter Key",
-                value=vault.get("OPENROUTER_API_KEY", ""),
-                type="password",
-                help="Chave de api do OpenRouter",
+                vault.get("OPENROUTER_API_KEY", ""),
+                "openrouter",
+                "OPENROUTER_API_KEY",
+                "or_key_input",
             )
 
             st.markdown("#### Configurações da API Gateway")
@@ -116,71 +140,64 @@ def run_ui() -> None:
                 help="Deixe vazio para acesso aberto no localhost",
             )
 
-            if st.form_submit_button("Salvar configurações", icon=":material/save:"):
-                new_vault = {
-                    "GOOGLE_API_KEY": g_key.strip(),
-                    "GROQ_API_KEY": groq_key.strip(),
-                    "OPENROUTER_API_KEY": or_key.strip(),
-                    "HOST": host_val.strip(),
-                    "PORT": int(port_val),
-                    "FREEAI_API_KEY": token_val.strip(),
-                }
-                save_vault(new_vault)
+            if st.button("Salvar configurações de rede", icon=":material/save:"):
+                vault.update({"HOST": host_val.strip(), "PORT": int(port_val), "FREEAI_API_KEY": token_val.strip()})
+                save_vault(vault)
                 reload_settings()
+                _get_cached_settings.clear()
                 restart_gateway(host=host_val.strip(), port=int(port_val))
-                st.success("Configurações criptografadas e salvas no vault! Servidor recarregado.")
+                st.success("Configurações de rede salvas! Servidor recarregado.")
                 st.rerun()
 
-    with tab_playground:
-        st.subheader("Playground interativo de teste")
-        available_targets = list(catalog.routes.keys()) if catalog.routes else ["chat"]
-        col_sel, _ = st.columns([2, 2])
-        selected_target = col_sel.selectbox("Selecione o alias ou modelo", options=available_targets)
+    if tab_playground.open:
+        with tab_playground:
+            st.subheader("Playground interativo de teste")
+            chat_targets = [name for name, targets in catalog.routes.items() if any("chat" in t.types for t in targets)]
+            available_targets = chat_targets or ["chat"]
+            col_sel, _ = st.columns([2, 2])
+            selected_target = col_sel.selectbox("Selecione o alias ou modelo", options=available_targets)
 
-        if "chat_history" not in st.session_state:
-            st.session_state["chat_history"] = []
+            if "chat_history" not in st.session_state:
+                st.session_state["chat_history"] = []
 
-        for msg in st.session_state["chat_history"]:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+            for msg in st.session_state["chat_history"]:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
 
-        if user_prompt := st.chat_input("Digite uma mensagem de teste para o modelo..."):
-            st.session_state["chat_history"].append({"role": "user", "content": user_prompt})
-            with st.chat_message("user"):
-                st.markdown(user_prompt)
+            if user_prompt := st.chat_input("Digite uma mensagem de teste para o modelo..."):
+                st.session_state["chat_history"].append({"role": "user", "content": user_prompt})
+                with st.chat_message("user"):
+                    st.markdown(user_prompt)
 
-            router_inst = Router(
-                catalog=catalog,
-                minute_cooldown_seconds=settings.router_settings.minute_cooldown_seconds,
-                daily_cooldown_seconds=settings.router_settings.daily_cooldown_seconds,
-                num_retries=settings.router_settings.num_retries,
-            )
+                router_inst = get_gateway_router()
 
-            with st.chat_message("assistant"):
-                response_box = st.empty()
+                with st.chat_message("assistant"):
+                    response_box = st.empty()
 
-                async def _call() -> str:
-                    res = await router_inst.acompletion(
-                        model=selected_target,
-                        messages=[{"role": "user", "content": user_prompt}],
-                        max_tokens=256,
-                    )
-                    return res.choices[0].message.content or ""
+                    if router_inst is None:
+                        response_box.error("Gateway offline. Inicie o servidor antes de usar o playground.")
+                    else:
 
-                try:
-                    reply = asyncio.run(_call())
-                    response_box.markdown(reply)
-                    st.session_state["chat_history"].append({"role": "assistant", "content": reply})
-                except Exception as err:
-                    response_box.error(f"Erro ao consultar '{selected_target}': {err}")
+                        async def _call() -> str:
+                            res = await router_inst.acompletion(
+                                model=selected_target,
+                                messages=[{"role": "user", "content": user_prompt}],
+                                max_tokens=256,
+                            )
+                            return res.choices[0].message.content or ""
+
+                        try:
+                            reply = asyncio.run(_call())
+                            response_box.markdown(reply)
+                            st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+                        except Exception as err:
+                            response_box.error(f"Erro ao consultar '{selected_target}': {err}")
 
 
 def main() -> None:
-    """Ponto de entrada principal do FreeAI para inicialização do Streamlit."""
     if st.runtime.exists():
         run_ui()
         return
-
     from streamlit.web import cli as stcli
 
     sys.argv = ["streamlit", "run", __file__, *sys.argv[1:]]
@@ -188,7 +205,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if st.runtime.exists():
-        run_ui()
-    else:
-        main()
+    main()

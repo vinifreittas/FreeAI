@@ -11,10 +11,10 @@ security = HTTPBearer(auto_error=False)
 async def verify_bearer_token(
     credentials: HTTPAuthorizationCredentials | None = Security(security),
 ) -> str:
-    """Verifica a presença e validade do token Bearer no cabeçalho Authorization."""
+    """Verifies presence and validity of Bearer token in Authorization header."""
     settings = get_settings()
 
-    # Se a chave da API do FreeAI não estiver configurada no servidor, o acesso é aberto (desenvolvimento local)
+    # If FreeAI API key is not configured on server, access is open (local development)
     if not settings.FREEAI_API_KEY:
         return ""
 

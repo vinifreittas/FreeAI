@@ -16,14 +16,14 @@ def test_storage_save_and_load(tmp_path, monkeypatch):
     save_vault(data)
 
     assert test_vault_file.exists()
-    # Verifica permissão 0600
+    # Verify 0600 permissions
     file_stat = os.stat(test_vault_file)
     assert file_stat.st_mode & (stat.S_IRWXG | stat.S_IRWXO) == 0
 
-    # Verifica que o conteúdo salvo não está em texto puro (está protegido/cifrado)
+    # Verify saved content is encrypted (not plain text)
     raw_content = test_vault_file.read_text()
     assert "test_google_key_123" not in raw_content
 
-    # Carrega e valida integridade
+    # Load and verify integrity
     loaded = load_vault()
     assert loaded == data

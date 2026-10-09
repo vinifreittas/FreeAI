@@ -45,14 +45,21 @@ class ProviderConfig(DynamicBaseModel):
 
     @property
     def api_key(self) -> str | None:
-        """Extract the API key from the protected vault or environment."""
+        """Extract API key from vault if active and validated."""
         if not self.api_key_env:
             return None
         vault = load_vault()
-        val = vault.get(self.api_key_env) or os.getenv(self.api_key_env)
-        if val:
+        if self.api_key_env in vault:
+            val = str(vault.get(self.api_key_env) or "").strip()
+            if not val:
+                os.environ.pop(self.api_key_env, None)
+                return None
+            if vault.get(f"{self.api_key_env}_VALIDATED") is False:
+                return None
             os.environ[self.api_key_env] = val
-        return val
+            return val
+        val = (os.getenv(self.api_key_env) or "").strip()
+        return val or None
 
 
 class AliasConfig(DynamicBaseModel):
@@ -113,8 +120,10 @@ class Settings(BaseSettings):
 
         vault = load_vault()
         for k, v in vault.items():
-            if isinstance(v, str) and v:
-                os.environ[k] = v
+            if isinstance(v, str) and v.strip():
+                os.environ[k] = v.strip()
+            elif not v:
+                os.environ.pop(k, None)
 
         path_str = (
             data.get("SETTINGS_CONFIG_PATH")
@@ -123,18 +132,8 @@ class Settings(BaseSettings):
             or os.getenv("SETTINGS_CONFIG_PATH")
             or os.getenv("MODELS_CONFIG_PATH")
         )
-        yaml_path = (
-            Path(path_str)
-            if path_str
-            else next(
-                (
-                    p
-                    for p in [Path(__file__).parent / "config.yaml", Path(__file__).parent / "settings.yaml"]
-                    if p.exists()
-                ),
-                None,
-            )
-        )
+        candidates = (Path(__file__).parent / "config.yaml", Path(__file__).parent / "settings.yaml")
+        yaml_path = Path(path_str) if path_str else next((p for p in candidates if p.exists()), None)
 
         merged: dict[str, Any] = {}
         if yaml_path and yaml_path.exists():
@@ -192,6 +191,6 @@ def get_settings() -> Settings:
 
 
 def reload_settings() -> Settings:
-    """Limpa cache e recarrega configurações atualizadas do vault."""
+    """Clears cache and reloads updated settings from vault."""
     get_settings.cache_clear()
     return get_settings()

@@ -1,3 +1,4 @@
+import contextlib
 import time
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -5,6 +6,25 @@ from typing import Any
 import litellm
 
 litellm.suppress_debug_info = True
+
+
+class StreamResponse:
+    """Async wrapper carrying diagnostic metadata for streaming response."""
+
+    def __init__(self, gen: Any, provider: str = "", model: str = "", attempts: int = 0):
+        self._gen = gen
+        self._freeai_provider = provider
+        self._freeai_model = model
+        self._freeai_attempts = attempts
+
+    def __aiter__(self):
+        return self._gen.__aiter__()
+
+
+def _attach_diag(obj: Any, provider: str, model: str, attempts: int) -> Any:
+    with contextlib.suppress(AttributeError, TypeError):
+        obj._freeai_provider, obj._freeai_model, obj._freeai_attempts = provider, model, attempts
+    return obj
 
 
 class Router:
@@ -24,6 +44,20 @@ class Router:
         self._cooldowns: dict[str, float] = {}
         self._disabled_models: set[str] = set()
         self._disabled_providers: set[str] = set()
+
+    def reset_cooldowns(self) -> None:
+        """Clears all in-memory cooldowns and disabled models/providers."""
+        self._cooldowns.clear(), self._disabled_models.clear(), self._disabled_providers.clear()
+
+    def get_cooldown_status(self) -> dict[str, Any]:
+        """Returns current active cooldowns and disabled models/providers."""
+        now = time.time()
+        active = {k: max(0, int(v - now)) for k, v in self._cooldowns.items() if v > now}
+        return {
+            "cooldowns": active,
+            "disabled_models": sorted(self._disabled_models),
+            "disabled_providers": sorted(self._disabled_providers),
+        }
 
     def _is_target_available(self, target: Any) -> bool:
         litellm_model = getattr(target, "litellm_model", str(target))
@@ -49,24 +83,22 @@ class Router:
 
         if isinstance(exc, litellm.BadRequestError | litellm.InvalidRequestError):
             return
-
         if isinstance(exc, litellm.AuthenticationError):
             if provider_id:
                 self._disabled_providers.add(provider_id)
             return
-
         if isinstance(exc, litellm.NotFoundError):
-            self._disabled_models.add(target_id)
-            self._disabled_models.add(litellm_model)
+            self._disabled_models.update({target_id, litellm_model})
             return
 
         if isinstance(exc, litellm.RateLimitError):
-            msg = str(exc).lower()
-            daily_keywords = ["quota", "daily", "per day", "rpd", "tpd"]
-            if any(kw in msg for kw in daily_keywords):
-                self._cooldowns[litellm_model] = time.time() + self.daily_cooldown_seconds
-            else:
-                self._cooldowns[litellm_model] = time.time() + self.minute_cooldown_seconds
+            daily_kw = ("quota", "daily", "per day", "rpd", "tpd")
+            cooldown = (
+                self.daily_cooldown_seconds
+                if any(k in str(exc).lower() for k in daily_kw)
+                else self.minute_cooldown_seconds
+            )
+            self._cooldowns[litellm_model] = time.time() + cooldown
             return
 
         self._cooldowns[litellm_model] = time.time() + self.minute_cooldown_seconds
@@ -75,14 +107,9 @@ class Router:
         if not self.catalog:
             return [model_name]
         if hasattr(self.catalog, "get_targets"):
-            targets = self.catalog.get_targets(model_name)
-        elif hasattr(self.catalog, "routes") and isinstance(self.catalog.routes, dict):
-            targets = self.catalog.routes.get(model_name, [])
-        elif isinstance(self.catalog, dict):
-            targets = self.catalog.get(model_name, [])
-        else:
-            targets = []
-        return targets
+            return self.catalog.get_targets(model_name)
+        routes = getattr(self.catalog, "routes", self.catalog)
+        return routes.get(model_name, []) if isinstance(routes, dict) else []
 
     async def acompletion(self, **kwargs: Any) -> Any:
         route_name = kwargs.get("model", "chat")
@@ -94,14 +121,17 @@ class Router:
         last_exc: Exception | None = None
         is_stream = kwargs.get("stream", False)
 
-        for target in targets:
+        for attempt, target in enumerate(targets):
             call_kwargs = dict(kwargs)
             call_kwargs["model"] = getattr(target, "litellm_model", str(target))
+            prov_id = getattr(target, "provider_id", "")
+            model_name = getattr(target, "litellm_model", str(target))
 
             if is_stream:
                 try:
                     response = await litellm.acompletion(**call_kwargs)
-                    return self._wrap_stream(response, target)
+                    wrapped = self._wrap_stream(response, target)
+                    return StreamResponse(wrapped, prov_id, model_name, attempt)
                 except Exception as exc:
                     self._handle_execution_error(target, exc)
                     if isinstance(exc, litellm.BadRequestError | litellm.InvalidRequestError):
@@ -110,7 +140,8 @@ class Router:
                     continue
 
             try:
-                return await litellm.acompletion(**call_kwargs)
+                response = await litellm.acompletion(**call_kwargs)
+                return _attach_diag(response, prov_id, model_name, attempt)
             except Exception as exc:
                 self._handle_execution_error(target, exc)
                 if isinstance(exc, litellm.BadRequestError | litellm.InvalidRequestError):
@@ -146,11 +177,17 @@ class Router:
             raise RuntimeError(f"Nenhum modelo disponível para a rota '{route_name}'")
 
         last_exc: Exception | None = None
-        for target in targets:
+        for attempt, target in enumerate(targets):
             call_kwargs = dict(kwargs)
             call_kwargs["model"] = getattr(target, "litellm_model", str(target))
             try:
-                return await sdk_func(**call_kwargs)
+                response = await sdk_func(**call_kwargs)
+                return _attach_diag(
+                    response,
+                    getattr(target, "provider_id", ""),
+                    getattr(target, "litellm_model", str(target)),
+                    attempt,
+                )
             except Exception as exc:
                 self._handle_execution_error(target, exc)
                 if isinstance(exc, litellm.BadRequestError | litellm.InvalidRequestError):

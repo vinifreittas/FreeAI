@@ -10,7 +10,7 @@ from freeai.services import Router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Gerencia o ciclo de vida da aplicação FastAPI, inicializando o Router de roteamento."""
+    """Manages FastAPI application lifecycle, initializing routing Router."""
     if not hasattr(app.state, "router") or app.state.router is None:
         settings = get_settings()
         catalog = build_router_catalog(settings)
@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_app(router_instance: Router | None = None) -> FastAPI:
-    """Instancia e configura a aplicação FastAPI para o Gateway FreeAI."""
+    """Instantiates and configures FastAPI application for FreeAI Gateway."""
     app = FastAPI(
         title="FreeAI API Gateway",
         description="Gateway de IA inteligente compatível com a especificação da OpenAI",

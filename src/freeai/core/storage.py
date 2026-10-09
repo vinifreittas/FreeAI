@@ -12,7 +12,7 @@ VAULT_PATH = Path(os.getenv("FREEAI_VAULT_PATH") or (VAULT_DIR / "vault.json"))
 
 
 def _derive_key() -> bytes:
-    """Deriva uma chave criptográfica estável baseada na máquina e usuário atual."""
+    """Derives stable cryptographic key based on current machine and user."""
     node = str(uuid.getnode())
     home = str(Path.home())
     user = os.getenv("USER", "freeai")
@@ -21,16 +21,20 @@ def _derive_key() -> bytes:
 
 
 def _xor_crypt(data: bytes, key: bytes) -> bytes:
-    """Cifra simétrica simples via XOR de keystream (stdlib)."""
+    """Simple symmetric cipher via keystream XOR (stdlib)."""
     return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 
 
+_cache_entry: tuple[str, float, dict[str, Any]] | None = None
+
+
 def load_vault() -> dict[str, Any]:
-    """Carrega as configurações e segredos do vault protegido no diretório do usuário."""
+    """Loads settings and secrets from protected user vault."""
+    global _cache_entry
     target_path = Path(os.getenv("FREEAI_VAULT_PATH") or VAULT_PATH)
     legacy_path = Path.cwd() / ".freeai_vault.json"
 
-    # Migração automática se existir arquivo legado no repositório
+    # Automatic migration if legacy file exists in repository
     if not target_path.exists() and legacy_path.exists():
         try:
             raw_b64 = legacy_path.read_bytes()
@@ -43,19 +47,28 @@ def load_vault() -> dict[str, Any]:
             pass
 
     if not target_path.exists():
+        _cache_entry = None
         return {}
+
+    mtime = target_path.stat().st_mtime
+    target_str = str(target_path)
+    if _cache_entry and _cache_entry[0] == target_str and _cache_entry[1] == mtime:
+        return dict(_cache_entry[2])
 
     try:
         raw_b64 = target_path.read_bytes()
         encrypted = base64.b64decode(raw_b64)
         decrypted = _xor_crypt(encrypted, _derive_key())
-        return json.loads(decrypted.decode("utf-8"))
+        data = json.loads(decrypted.decode("utf-8"))
+        _cache_entry = (target_str, mtime, data)
+        return dict(data)
     except Exception:
         return {}
 
 
 def save_vault(data: dict[str, Any]) -> None:
-    """Salva configurações e segredos com cifra local e permissão 0600 em ~/.freeai/vault.json."""
+    """Saves settings and secrets encrypted with 0600 permissions to ~/.freeai/vault.json."""
+    global _cache_entry
     target_path = Path(os.getenv("FREEAI_VAULT_PATH") or VAULT_PATH)
     target_dir = target_path.parent
 
@@ -68,9 +81,10 @@ def save_vault(data: dict[str, Any]) -> None:
     encrypted = _xor_crypt(payload, key)
     b64_data = base64.b64encode(encrypted)
 
-    # Cria ou sobrescreve com permissão restrita 0o600 (apenas proprietário)
+    # Create or overwrite with restricted 0o600 permissions (owner only)
     flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
     fd = os.open(target_path, flags, 0o600)
     with os.fdopen(fd, "wb") as f:
         f.write(b64_data)
     os.chmod(target_path, 0o600)
+    _cache_entry = (str(target_path), target_path.stat().st_mtime, dict(data))

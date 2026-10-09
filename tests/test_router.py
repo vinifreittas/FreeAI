@@ -45,3 +45,40 @@ async def test_router_no_targets_error(mock_catalog):
     router = Router(catalog=mock_catalog)
     with pytest.raises(RuntimeError, match="Nenhum modelo disponível"):
         await router.acompletion(model="non_existent_route")
+
+
+def test_router_cooldown_reset(mock_catalog):
+    router = Router(catalog=mock_catalog)
+    router._disabled_providers.add("mock")
+    router._disabled_models.add("test-chat")
+    router._cooldowns["mock/test-chat"] = 9999999999.0
+
+    status = router.get_cooldown_status()
+    assert "mock" in status["disabled_providers"]
+    assert "test-chat" in status["disabled_models"]
+    assert "mock/test-chat" in status["cooldowns"]
+
+    router.reset_cooldowns()
+    cleared = router.get_cooldown_status()
+    assert cleared["disabled_providers"] == []
+    assert cleared["disabled_models"] == []
+    assert cleared["cooldowns"] == {}
+
+
+@pytest.mark.asyncio
+async def test_router_metadata_attachment(mock_catalog, monkeypatch):
+    class FakeResponse:
+        pass
+
+    async def fake_acompletion(**kwargs):
+        return FakeResponse()
+
+    import litellm
+
+    monkeypatch.setattr(litellm, "acompletion", fake_acompletion)
+
+    router = Router(catalog=mock_catalog)
+    res = await router.acompletion(model="chat", messages=[{"role": "user", "content": "hi"}])
+    assert getattr(res, "_freeai_provider", None) == "mock"
+    assert getattr(res, "_freeai_model", None) == "mock/test-chat"
+    assert getattr(res, "_freeai_attempts", None) == 0

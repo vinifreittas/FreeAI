@@ -53,22 +53,24 @@ core  ←  services  ←  api  ←  app
 src/freeai/
 ├── __init__.py                      # Package initialization
 ├── app.py                          # Streamlit application (Dashboard, Vault Settings, Playground & Launcher)
+├── ui_snippets.py                  # Streamlit UI integration snippets & interactive key tester
 ├── core/                            # Configuration & Settings module
 │   ├── __init__.py                  # Exports get_settings, reload_settings, load_vault, save_vault
 │   ├── config.py                    # Pydantic Settings, schemas & build_router_catalog resolution engine
 │   ├── config.yaml                  # Provider definitions, backend models, metadata, aliases & router settings
 │   └── storage.py                   # Protected local secrets persistence (0600, machine-derived keystream)
 ├── services/                        # LLM Routing & Resilience module
-│   ├── __init__.py                  # Exports Router
-│   └── llm_router.py                # Resilient Router managing in-memory cooldowns & LiteLLM execution
+│   ├── __init__.py                  # Exports Router, test_provider_key
+│   ├── key_validator.py             # Lightweight single-token connection health-check validator
+│   └── llm_router.py                # Resilient Router managing in-memory cooldowns, diagnostics & LiteLLM execution
 └── api/                             # API Gateway module (FastAPI)
-    ├── __init__.py                  # Exports create_app, start_gateway, stop_gateway, restart_gateway
+    ├── __init__.py                  # Exports create_app, start_gateway, stop_gateway, restart_gateway, clear_gateway_cooldowns, reload_gateway_catalog
     ├── server.py                    # FastAPI app factory with lifespan router setup
     ├── gateway_manager.py           # Thread-based background Uvicorn server lifecycle manager
     ├── auth.py                      # HTTP Bearer token verification dependency
     └── v1/                          # OpenAI specification v1 endpoints
         ├── __init__.py
-        └── routes.py                # Endpoints /v1 (chat, embeddings, audio, models)
+        └── routes.py                # Endpoints /v1 with diagnostic headers (chat, embeddings, audio, models)
 ```
 
 ---

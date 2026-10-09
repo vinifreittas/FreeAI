@@ -11,14 +11,22 @@ router = APIRouter(prefix="/v1", dependencies=[Depends(verify_bearer_token)])
 
 
 def get_litellm_router(request: Request) -> Router:
-    """Obtém a instância do Router configurada no estado da aplicação."""
+    """Returns the Router instance configured in the application state."""
     app_router: Router | None = getattr(request.app.state, "router", None)
     if not app_router:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Mecanismo de roteamento não inicializado no servidor",
+            detail="Router not initialized on server",
         )
     return app_router
+
+
+def _diag_headers(obj: Any) -> dict[str, str]:
+    return {
+        "X-FreeAI-Provider": getattr(obj, "_freeai_provider", ""),
+        "X-FreeAI-Model": getattr(obj, "_freeai_model", ""),
+        "X-FreeAI-Fallback-Attempts": str(getattr(obj, "_freeai_attempts", 0)),
+    }
 
 
 @router.post("/chat/completions")
@@ -26,20 +34,24 @@ async def chat_completions(
     request: Request,
     app_router: Router = Depends(get_litellm_router),
 ) -> Any:
-    """Endpoint de Chat Completion (compatível com OpenAI API) com suporte a SSE Streaming."""
+    """Chat Completion endpoint (OpenAI API compatible) with SSE Streaming support."""
     try:
         body = await request.json()
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"JSON inválido: {e}") from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid JSON: {e}") from e
 
     is_stream = body.get("stream", False)
 
     if is_stream:
+        try:
+            stream_resp = await app_router.acompletion(**body)
+            headers = _diag_headers(stream_resp)
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
         async def stream_generator():
             try:
-                response = await app_router.acompletion(**body)
-                async for chunk in response:
+                async for chunk in stream_resp:
                     if hasattr(chunk, "model_dump_json"):
                         chunk_data = chunk.model_dump_json()
                     elif isinstance(chunk, dict):
@@ -53,13 +65,12 @@ async def chat_completions(
                 yield f"data: {err_data}\n\n"
                 yield "data: [DONE]\n\n"
 
-        return StreamingResponse(stream_generator(), media_type="text/event-stream")
+        return StreamingResponse(stream_generator(), media_type="text/event-stream", headers=headers)
 
     try:
         response = await app_router.acompletion(**body)
-        if hasattr(response, "model_dump"):
-            return response.model_dump()
-        return response
+        content = response.model_dump() if hasattr(response, "model_dump") else response
+        return JSONResponse(content=content, headers=_diag_headers(response))
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
@@ -69,17 +80,16 @@ async def embeddings(
     request: Request,
     app_router: Router = Depends(get_litellm_router),
 ) -> Any:
-    """Endpoint de Embeddings (compatível com OpenAI API)."""
+    """Embeddings endpoint (OpenAI API compatible)."""
     try:
         body = await request.json()
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"JSON inválido: {e}") from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid JSON: {e}") from e
 
     try:
         response = await app_router.aembedding(**body)
-        if hasattr(response, "model_dump"):
-            return response.model_dump()
-        return response
+        content = response.model_dump() if hasattr(response, "model_dump") else response
+        return JSONResponse(content=content, headers=_diag_headers(response))
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
@@ -89,11 +99,11 @@ async def text_to_speech(
     request: Request,
     app_router: Router = Depends(get_litellm_router),
 ) -> Any:
-    """Endpoint de Text-to-Speech (TTS)."""
+    """Text-to-Speech (TTS) endpoint."""
     try:
         body = await request.json()
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"JSON inválido: {e}") from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid JSON: {e}") from e
 
     try:
         response = await app_router.aspeech(**body)
@@ -108,11 +118,11 @@ async def audio_transcriptions(
     request: Request,
     app_router: Router = Depends(get_litellm_router),
 ) -> Any:
-    """Endpoint de Speech-to-Text (STT / Transcrição)."""
+    """Speech-to-Text (STT / Transcription) endpoint."""
     try:
         body = await request.json()
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"JSON inválido: {e}") from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid JSON: {e}") from e
 
     try:
         response = await app_router.atranscription(**body)
@@ -127,7 +137,7 @@ async def audio_transcriptions(
 async def list_models(
     app_router: Router = Depends(get_litellm_router),
 ) -> JSONResponse:
-    """Retorna os modelos e aliases ativos e configurados no formato OpenAI Models List."""
+    """Returns active configured models and aliases in OpenAI Models List format."""
     catalog = app_router.catalog
     route_names: list[str] = []
     if hasattr(catalog, "list_all_route_names"):
