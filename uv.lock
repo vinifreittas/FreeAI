@@ -576,6 +576,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pyyaml" },
     { name = "streamlit" },
+    { name = "typer" },
     { name = "uvicorn" },
 ]
 
@@ -596,6 +597,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.15.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "streamlit", specifier = ">=1.65.0" },
+    { name = "typer", specifier = ">=0.15.0" },
     { name = "uvicorn", specifier = ">=0.54.0" },
 ]
 

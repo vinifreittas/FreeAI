@@ -22,55 +22,107 @@ providers:
     website_url: "https://aistudio.google.com/"
     api_key_env: "GOOGLE_API_KEY"
     models:
-      - id: "gemini-3.5-flash"
-        remote_model: "gemini-3.5-flash"
+      - id: "gemini-2.5-flash-native-audio-dialog"
+        remote_model: "gemini-2.5-flash-native-audio-dialog"
+        types: ["chat", "tts"]
+
+      - id: "gemini-3-flash-live"
+        remote_model: "gemini-3-flash-live"
         types: ["chat"]
 
-      - id: "gemini-3.1-flash-lite"
-        remote_model: "gemini-3.1-flash-lite"
+      - id: "gemini-3.5-live-translate"
+        remote_model: "gemini-3.5-live-translate"
         types: ["chat"]
 
-      - id: "gemini-3-flash"
-        remote_model: "gemini-3-flash-preview"
+      - id: "gemini-3.5-transcribe-live"
+        remote_model: "gemini-3.5-transcribe-live"
+        types: ["stt"]
+
+      - id: "gemini-3.8-live"
+        remote_model: "gemini-3.8-live"
         types: ["chat"]
 
-      - id: "gemma-4-31b"
-        remote_model: "gemma-4-31b-it"
-        types: ["chat"]
+      - id: "gemini-3.8-live-extended-thinking"
+        remote_model: "gemini-3.8-live-extended-thinking"
+        types: ["reasoning"]
 
       - id: "gemma-4-26b"
-        remote_model: "gemma-4-26b-a4b-it"
+        remote_model: "gemma-4-26b"
         types: ["chat"]
 
       - id: "gemini-embedding-2"
         remote_model: "gemini-embedding-2"
         types: ["embedding"]
 
+      - id: "gemini-embedding-1"
+        remote_model: "gemini-embedding-1"
+        types: ["embedding"]
+
+      - id: "gemini-3.8-flash-tts"
+        remote_model: "gemini-3.8-flash-tts"
+        types: ["tts"]
+
+      - id: "gemini-3.8-flash-lite-tts"
+        remote_model: "gemini-3.8-flash-lite-tts"
+        types: ["tts"]
+
+      - id: "gemini-3.8-flash"
+        remote_model: "gemini-3.8-flash"
+        types: ["chat"]
+
+      - id: "gemini-3.7-flash"
+        remote_model: "gemini-3.7-flash"
+        types: ["chat"]
+
+      - id: "gemini-3.6-flash"
+        remote_model: "gemini-3.6-flash"
+        types: ["chat"]
+
+      - id: "gemini-3.5-transcribe"
+        remote_model: "gemini-3.5-transcribe"
+        types: ["stt"]
+
+      - id: "gemini-3.5-flash-lite"
+        remote_model: "gemini-3.5-flash-lite"
+        types: ["chat"]
+
       - id: "gemini-3.1-flash-tts"
         remote_model: "gemini-3.1-flash-tts"
         types: ["tts"]
 
+      - id: "gemini-3-flash"
+        remote_model: "gemini-3-flash"
+        types: ["chat"]
+
       - id: "gemini-2.5-flash-tts"
         remote_model: "gemini-2.5-flash-tts"
         types: ["tts"]
+
+      - id: "gemini-2.5-flash-lite"
+        remote_model: "gemini-2.5-flash-lite"
+        types: ["chat"]
+
+      - id: "gemini-2.5-flash"
+        remote_model: "gemini-2.5-flash"
+        types: ["chat"]
+
+      - id: "gemma-4-31b"
+        remote_model: "gemma-4-31b"
+        types: ["chat"]
+
+      - id: "gemini-3.1-flash-lite"
+        remote_model: "gemini-3.1-flash-lite"
+        types: ["chat"]
+
+      - id: "gemini-3.5-flash"
+        remote_model: "gemini-3.5-flash"
+        types: ["chat"]
 
   - id: "groq"
     display_name: "Groq Cloud"
     website_url: "https://groq.com/"
     api_key_env: "GROQ_API_KEY"
     models:
-      - id: "groq-llama-3.3-70b"
-        remote_model: "llama-3.3-70b-versatile"
-        types: ["chat"]
-
-      - id: "groq-compound"
-        remote_model: "groq/compound"
-        types: ["chat"]
-
-      - id: "groq-compound-mini"
-        remote_model: "groq/compound-mini"
-        types: ["chat"]
-
       - id: "groq-gpt-oss-120b"
         remote_model: "openai/gpt-oss-120b"
         types: ["chat"]
@@ -79,15 +131,15 @@ providers:
         remote_model: "openai/gpt-oss-20b"
         types: ["chat"]
 
-      - id: "groq-qwen3.6-27b"
-        remote_model: "qwen/qwen3.6-27b"
+      - id: "groq-qwen3.8-27b"
+        remote_model: "qwen/qwen3.8-27b"
         types: ["chat"]
 
-      - id: "whisper-large-v3"
+      - id: "groq-whisper-large-v3"
         remote_model: "whisper-large-v3"
         types: ["stt"]
 
-      - id: "whisper-large-v3-turbo"
+      - id: "groq-whisper-large-v3-turbo"
         remote_model: "whisper-large-v3-turbo"
         types: ["stt"]
 
@@ -96,41 +148,81 @@ providers:
     website_url: "https://openrouter.ai/"
     api_key_env: "OPENROUTER_API_KEY"
     models:
-      - id: "openrouter-gpt-oss-120b"
-        remote_model: "openai/gpt-oss-120b:free"
+      - id: "openrouter-fish-audio-s2.1-pro"
+        remote_model: "fish-audio/s2.1-pro-free:free"
+        types: ["tts"]
+
+      - id: "openrouter-respan-01-lite"
+        remote_model: "respan/span-01-lite:free"
         types: ["chat"]
 
-      - id: "openrouter-gpt-oss-20b"
-        remote_model: "openai/gpt-oss-20b:free"
+      - id: "openrouter-lfm-2.5-embedding-350m"
+        remote_model: "liquid/lfm-2.5-embedding-350m:free"
+        types: ["embedding"]
+
+      - id: "openrouter-gemma-4-31b-it"
+        remote_model: "google/gemma-4-31b-it:free"
         types: ["chat"]
 
-      - id: "openrouter-qwen3-coder"
-        remote_model: "qwen/qwen3-coder:free"
-        types: ["chat", "code"]
+      - id: "openrouter-llama-nemotron-embed-vl-1b-v2"
+        remote_model: "nvidia/llama-nemotron-embed-vl-1b-v2:free"
+        types: ["embedding"]
 
-      - id: "openrouter-qwen3-next-80b"
-        remote_model: "qwen/qwen3-next-80b-a3b-instruct:free"
+      - id: "openrouter-gemma-4-26b-a4b-it"
+        remote_model: "google/gemma-4-26b-a4b-it:free"
         types: ["chat"]
 
-      - id: "openrouter-nemotron-3-super-120b"
-        remote_model: "nvidia/nemotron-3-super-120b-a12b:free"
+      - id: "openrouter-nemotron-3-embed-1b"
+        remote_model: "nvidia/nemotron-3-embed-1b:free"
+        types: ["embedding"]
+
+      - id: "openrouter-llama-nemotron-rerank-vl-1b-v2"
+        remote_model: "nvidia/llama-nemotron-rerank-vl-1b-v2:free"
+        types: ["embedding"]
+
+      - id: "openrouter-nemotron-3.5-content-safety"
+        remote_model: "nvidia/nemotron-3.5-content-safety:free"
         types: ["chat"]
 
-      - id: "openrouter-nemotron-3-nano-reasoning"
+      - id: "openrouter-lfm-2.5-2.6b"
+        remote_model: "liquid/lfm-2.5-2.6b:free"
+        types: ["chat"]
+
+      - id: "openrouter-mercury-decide"
+        remote_model: "inception/mercury-decide:free"
+        types: ["chat"]
+
+      - id: "openrouter-nemotron-3-nano-omni-30b-a3b-reasoning"
         remote_model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
         types: ["reasoning"]
 
-      - id: "openrouter-nemotron-3-nano"
-        remote_model: "nvidia/nemotron-3-nano-30b-a3b:free"
+      - id: "openrouter-inkling-small"
+        remote_model: "thinkingmachines/inkling-small:free"
         types: ["chat"]
 
-      - id: "openrouter-laguna-m.1"
-        remote_model: "poolside/laguna-m.1:free"
+      - id: "openrouter-north-mini-code"
+        remote_model: "cohere/north-mini-code:free"
+        types: ["code"]
+
+      - id: "openrouter-apodex-1.1-mini"
+        remote_model: "apodex/apodex-1.1-mini:free"
         types: ["chat"]
 
-      - id: "openrouter-llama-nemotron-embed"
-        remote_model: "nvidia/llama-nemotron-embed-vl-1b-v2:free"
-        types: ["embedding"]
+      - id: "openrouter-inkling"
+        remote_model: "thinkingmachines/inkling:free"
+        types: ["chat"]
+
+      - id: "openrouter-nemotron-3-super-120b-a12b"
+        remote_model: "nvidia/nemotron-3-super-120b-a12b:free"
+        types: ["chat"]
+
+      - id: "openrouter-nemotron-3.5-lightning"
+        remote_model: "nvidia/nemotron-3.5-lightning:free"
+        types: ["chat"]
+
+      - id: "openrouter-nemotron-3-ultra-550b-a55b"
+        remote_model: "nvidia/nemotron-3-ultra-550b-a55b:free"
+        types: ["chat"]
 
 # =========================================================================
 # VIRTUAL ROUTER ALIASES (Application Shortcuts)

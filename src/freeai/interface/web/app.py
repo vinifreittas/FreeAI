@@ -12,7 +12,8 @@ from freeai.api.gateway_manager import (
     stop_gateway,
 )
 from freeai.core import build_router_catalog, get_settings, load_vault, reload_settings, save_vault
-from freeai.ui_snippets import key_input_with_status, render_client_snippets
+from freeai.interface.web.snippets import key_input_with_status, render_client_snippets
+from freeai.interface.web.test_view import render_test_view
 
 
 @st.cache_resource
@@ -23,7 +24,6 @@ def _get_cached_settings():
 def run_ui() -> None:
     st.set_page_config(page_title="FreeAI — Gateway & Router", page_icon="⚡", layout="wide")
 
-    # Automatically start Gateway in background
     if "gateway_auto_started" not in st.session_state:
         start_gateway()
         st.session_state["gateway_auto_started"] = True
@@ -62,12 +62,8 @@ def run_ui() -> None:
                 st.markdown(f":{color}[:material/{icon}:] **{p.display_name}** ({len(p.models)} modelos)")
 
             router = get_gateway_router()
-            cd_data = (
-                router.get_cooldown_status()
-                if router
-                else {"cooldowns": {}, "disabled_models": [], "disabled_providers": []}
-            )
-            cd_count = len(cd_data["cooldowns"]) + len(cd_data["disabled_models"]) + len(cd_data["disabled_providers"])
+            cd_data = router.get_cooldown_status() if router else {}
+            cd_count = sum(len(cd_data.get(k, [])) for k in ("cooldowns", "disabled_models", "disabled_providers"))
             if cd_count > 0:
                 st.warning(f"⚠️ {cd_count} modelo(s) em cooldown")
                 if st.button("Zerar Cooldowns", icon=":material/restart_alt:"):
@@ -75,8 +71,13 @@ def run_ui() -> None:
                     st.rerun()
 
     # --- MAIN TABS ---
-    tab_overview, tab_settings, tab_playground = st.tabs(
-        [":material/dashboard: Visão geral", ":material/key: Configurações & chaves", ":material/chat: Playground"],
+    tab_overview, tab_tests, tab_settings, tab_playground = st.tabs(
+        [
+            ":material/dashboard: Visão geral",
+            ":material/network_check: Testar modelos",
+            ":material/key: Configurações & chaves",
+            ":material/chat: Playground",
+        ],
         on_change="rerun",
     )
 
@@ -105,29 +106,25 @@ def run_ui() -> None:
             st.dataframe(aliases_data, hide_index=True)
             render_client_snippets(info["url"], settings.FREEAI_API_KEY)
 
+    if tab_tests.open:
+        with tab_tests:
+            render_test_view(settings)
+
     if tab_settings.open:
         with tab_settings:
             st.subheader("Configurações persistentes protegidas")
             st.caption(
                 "Salvo no cofre do usuário (~/.freeai/vault.json) com cifra derivada da máquina e permissão restrita 0600."
             )
-
             vault = load_vault()
             st.markdown("#### Chaves de API dos provedores")
             st.caption("Validadas automaticamente ao pressionar Enter. Salvas no cofre imediatamente.")
-            key_input_with_status(
-                "Google AI Studio Key", vault.get("GOOGLE_API_KEY", ""), "gemini", "GOOGLE_API_KEY", "g_key_input"
-            )
-            key_input_with_status(
-                "Groq Cloud Key", vault.get("GROQ_API_KEY", ""), "groq", "GROQ_API_KEY", "groq_key_input"
-            )
-            key_input_with_status(
-                "OpenRouter Key",
-                vault.get("OPENROUTER_API_KEY", ""),
-                "openrouter",
-                "OPENROUTER_API_KEY",
-                "or_key_input",
-            )
+            for label, key_name, prov, inp_k in [
+                ("Google AI Studio Key", "GOOGLE_API_KEY", "gemini", "g_key_input"),
+                ("Groq Cloud Key", "GROQ_API_KEY", "groq", "groq_key_input"),
+                ("OpenRouter Key", "OPENROUTER_API_KEY", "openrouter", "or_key_input"),
+            ]:
+                key_input_with_status(label, vault.get(key_name, ""), prov, key_name, inp_k)
 
             st.markdown("#### Configurações da API Gateway")
             c1, c2 = st.columns(2)
@@ -139,7 +136,6 @@ def run_ui() -> None:
                 type="password",
                 help="Deixe vazio para acesso aberto no localhost",
             )
-
             if st.button("Salvar configurações de rede", icon=":material/save:"):
                 vault.update({"HOST": host_val.strip(), "PORT": int(port_val), "FREEAI_API_KEY": token_val.strip()})
                 save_vault(vault)
@@ -170,24 +166,20 @@ def run_ui() -> None:
                     st.markdown(user_prompt)
 
                 router_inst = get_gateway_router()
-
                 with st.chat_message("assistant"):
                     response_box = st.empty()
-
                     if router_inst is None:
                         response_box.error("Gateway offline. Inicie o servidor antes de usar o playground.")
                     else:
-
-                        async def _call() -> str:
-                            res = await router_inst.acompletion(
-                                model=selected_target,
-                                messages=[{"role": "user", "content": user_prompt}],
-                                max_tokens=256,
-                            )
-                            return res.choices[0].message.content or ""
-
                         try:
-                            reply = asyncio.run(_call())
+                            res = asyncio.run(
+                                router_inst.acompletion(
+                                    model=selected_target,
+                                    messages=[{"role": "user", "content": user_prompt}],
+                                    max_tokens=256,
+                                )
+                            )
+                            reply = res.choices[0].message.content or ""
                             response_box.markdown(reply)
                             st.session_state["chat_history"].append({"role": "assistant", "content": reply})
                         except Exception as err:

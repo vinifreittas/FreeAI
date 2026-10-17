@@ -64,9 +64,11 @@ class Router:
         provider_id = getattr(target, "provider_id", litellm_model.split("/")[0] if "/" in litellm_model else "")
         target_id = getattr(target, "target_id", litellm_model)
 
-        if target_id in self._disabled_models or litellm_model in self._disabled_models:
-            return False
-        if provider_id and provider_id in self._disabled_providers:
+        if (
+            target_id in self._disabled_models
+            or litellm_model in self._disabled_models
+            or (provider_id and provider_id in self._disabled_providers)
+        ):
             return False
 
         now = time.time()
@@ -93,11 +95,8 @@ class Router:
 
         if isinstance(exc, litellm.RateLimitError):
             daily_kw = ("quota", "daily", "per day", "rpd", "tpd")
-            cooldown = (
-                self.daily_cooldown_seconds
-                if any(k in str(exc).lower() for k in daily_kw)
-                else self.minute_cooldown_seconds
-            )
+            is_daily = any(k in str(exc).lower() for k in daily_kw)
+            cooldown = self.daily_cooldown_seconds if is_daily else self.minute_cooldown_seconds
             self._cooldowns[litellm_model] = time.time() + cooldown
             return
 
@@ -111,43 +110,34 @@ class Router:
         routes = getattr(self.catalog, "routes", self.catalog)
         return routes.get(model_name, []) if isinstance(routes, dict) else []
 
-    async def acompletion(self, **kwargs: Any) -> Any:
-        route_name = kwargs.get("model", "chat")
+    def _prepare_call(self, default_route: str, kwargs: dict[str, Any]) -> tuple[str, list[Any]]:
+        route_name = kwargs.get("model", default_route)
         targets = [t for t in self._get_target_list(route_name) if self._is_target_available(t)]
-
         if not targets:
             raise RuntimeError(f"Nenhum modelo disponível para a rota '{route_name}'")
+        return route_name, targets
 
+    async def acompletion(self, **kwargs: Any) -> Any:
+        if not kwargs.get("stream", False):
+            return await self._execute_sdk_func(litellm.acompletion, default_route="chat", **kwargs)
+
+        route_name, targets = self._prepare_call("chat", kwargs)
         last_exc: Exception | None = None
-        is_stream = kwargs.get("stream", False)
-
         for attempt, target in enumerate(targets):
-            call_kwargs = dict(kwargs)
-            call_kwargs["model"] = getattr(target, "litellm_model", str(target))
-            prov_id = getattr(target, "provider_id", "")
-            model_name = getattr(target, "litellm_model", str(target))
-
-            if is_stream:
-                try:
-                    response = await litellm.acompletion(**call_kwargs)
-                    wrapped = self._wrap_stream(response, target)
-                    return StreamResponse(wrapped, prov_id, model_name, attempt)
-                except Exception as exc:
-                    self._handle_execution_error(target, exc)
-                    if isinstance(exc, litellm.BadRequestError | litellm.InvalidRequestError):
-                        raise
-                    last_exc = exc
-                    continue
-
+            call_kwargs = {**kwargs, "model": getattr(target, "litellm_model", str(target))}
             try:
-                response = await litellm.acompletion(**call_kwargs)
-                return _attach_diag(response, prov_id, model_name, attempt)
+                res = await litellm.acompletion(**call_kwargs)
+                return StreamResponse(
+                    self._wrap_stream(res, target),
+                    getattr(target, "provider_id", ""),
+                    call_kwargs["model"],
+                    attempt,
+                )
             except Exception as exc:
                 self._handle_execution_error(target, exc)
                 if isinstance(exc, litellm.BadRequestError | litellm.InvalidRequestError):
                     raise
                 last_exc = exc
-
         if last_exc:
             raise last_exc
         raise RuntimeError(f"Falha ao executar acompletion para rota '{route_name}'")
@@ -160,6 +150,12 @@ class Router:
             self._handle_execution_error(target, exc)
             raise
 
+    def completion(self, **kwargs: Any) -> Any:
+        return self._execute_sync_func(litellm.completion, default_route="chat", **kwargs)
+
+    def embedding(self, **kwargs: Any) -> Any:
+        return self._execute_sync_func(litellm.embedding, default_route="embed", **kwargs)
+
     async def aembedding(self, **kwargs: Any) -> Any:
         return await self._execute_sdk_func(litellm.aembedding, default_route="embed", **kwargs)
 
@@ -169,31 +165,36 @@ class Router:
     async def atranscription(self, **kwargs: Any) -> Any:
         return await self._execute_sdk_func(litellm.atranscription, default_route="stt", **kwargs)
 
-    async def _execute_sdk_func(self, sdk_func: Any, default_route: str = "default", **kwargs: Any) -> Any:
-        route_name = kwargs.get("model", default_route)
-        targets = [t for t in self._get_target_list(route_name) if self._is_target_available(t)]
-
-        if not targets:
-            raise RuntimeError(f"Nenhum modelo disponível para a rota '{route_name}'")
-
+    def _execute_sync_func(self, sdk_func: Any, default_route: str = "default", **kwargs: Any) -> Any:
+        route_name, targets = self._prepare_call(default_route, kwargs)
         last_exc: Exception | None = None
         for attempt, target in enumerate(targets):
-            call_kwargs = dict(kwargs)
-            call_kwargs["model"] = getattr(target, "litellm_model", str(target))
+            call_kwargs = {**kwargs, "model": getattr(target, "litellm_model", str(target))}
             try:
-                response = await sdk_func(**call_kwargs)
-                return _attach_diag(
-                    response,
-                    getattr(target, "provider_id", ""),
-                    getattr(target, "litellm_model", str(target)),
-                    attempt,
-                )
+                res = sdk_func(**call_kwargs)
+                return _attach_diag(res, getattr(target, "provider_id", ""), call_kwargs["model"], attempt)
             except Exception as exc:
                 self._handle_execution_error(target, exc)
                 if isinstance(exc, litellm.BadRequestError | litellm.InvalidRequestError):
                     raise
                 last_exc = exc
+        if last_exc:
+            raise last_exc
+        raise RuntimeError(f"Falha ao executar chamada para rota '{route_name}'")
 
+    async def _execute_sdk_func(self, sdk_func: Any, default_route: str = "default", **kwargs: Any) -> Any:
+        route_name, targets = self._prepare_call(default_route, kwargs)
+        last_exc: Exception | None = None
+        for attempt, target in enumerate(targets):
+            call_kwargs = {**kwargs, "model": getattr(target, "litellm_model", str(target))}
+            try:
+                res = await sdk_func(**call_kwargs)
+                return _attach_diag(res, getattr(target, "provider_id", ""), call_kwargs["model"], attempt)
+            except Exception as exc:
+                self._handle_execution_error(target, exc)
+                if isinstance(exc, litellm.BadRequestError | litellm.InvalidRequestError):
+                    raise
+                last_exc = exc
         if last_exc:
             raise last_exc
         raise RuntimeError(f"Falha ao executar chamada para rota '{route_name}'")

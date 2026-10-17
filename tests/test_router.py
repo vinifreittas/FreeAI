@@ -82,3 +82,21 @@ async def test_router_metadata_attachment(mock_catalog, monkeypatch):
     assert getattr(res, "_freeai_provider", None) == "mock"
     assert getattr(res, "_freeai_model", None) == "mock/test-chat"
     assert getattr(res, "_freeai_attempts", None) == 0
+
+
+def test_router_sync_completion(mock_catalog, monkeypatch):
+    class FakeResponse:
+        pass
+
+    def fake_completion(**kwargs):
+        return FakeResponse()
+
+    import litellm
+
+    monkeypatch.setattr(litellm, "completion", fake_completion)
+
+    router = Router(catalog=mock_catalog)
+    res = router.completion(model="chat", messages=[{"role": "user", "content": "hi"}])
+    assert getattr(res, "_freeai_provider", None) == "mock"
+    assert getattr(res, "_freeai_model", None) == "mock/test-chat"
+    assert getattr(res, "_freeai_attempts", None) == 0

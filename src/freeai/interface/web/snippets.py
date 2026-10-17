@@ -36,7 +36,6 @@ def key_input_with_status(label: str, vault_val: str, provider_id: str, api_key_
     status_key = f"_key_status_{input_key}"
     msg_key = f"_key_msg_{input_key}"
 
-    # Restore initial state from vault on page reload
     if status_key not in st.session_state and vault_val:
         vault = load_vault()
         validated = vault.get(f"{api_key_env}_VALIDATED")
@@ -66,7 +65,7 @@ def key_input_with_status(label: str, vault_val: str, provider_id: str, api_key_
 
 
 def render_client_snippets(base_url: str, api_key: str) -> None:
-    """Renders ready-to-use client integration snippets (Python, cURL, Open WebUI)."""
+    """Renders ready-to-use client integration snippets (Python, cURL, Cursor / Open WebUI)."""
     bearer_val = api_key or "freeai"
     exp = st.expander("🔌 Exemplos de Integração (Python, cURL, Cursor / Open WebUI)", on_change="rerun")
     if exp.open:

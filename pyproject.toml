@@ -23,10 +23,11 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "pyyaml>=6.0.3",
     "streamlit>=1.65.0",
+    "typer>=0.15.0",
 ]
 
 [project.scripts]
-freeai = "freeai.app:main"
+freeai = "freeai.main:app"
 
 [project.urls]
 Homepage = "https://github.com/vinifreittas/FreeAI"
