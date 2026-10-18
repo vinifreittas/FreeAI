@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import time
+import warnings
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -9,8 +10,15 @@ import litellm
 litellm.suppress_debug_info = True
 litellm.set_verbose = False
 litellm.turn_off_message_logging = True
-logging.getLogger("LiteLLM").setLevel(logging.WARNING)
-logging.getLogger("LiteLLM").propagate = False
+
+warnings.filterwarnings("ignore", module=r"litellm.*")
+
+for _logger_name in ("LiteLLM", "LiteLLM Router", "LiteLLM Proxy"):
+    _log = logging.getLogger(_logger_name)
+    _log.handlers.clear()
+    _log.setLevel(logging.CRITICAL + 1)
+    _log.propagate = False
+    _log.disabled = True
 
 
 class StreamResponse:
