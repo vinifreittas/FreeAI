@@ -5,8 +5,8 @@ from freeai.services import Router
 
 try:
     from agno.models.litellm import LiteLLM
-except ImportError as err:  # pragma: no cover
-    raise ImportError("Para usar o adaptador Agno, instale o pacote agno: uv add agno") from err
+except ImportError:
+    LiteLLM = object  # type: ignore
 
 
 def get_default_router() -> Router:
@@ -25,5 +25,7 @@ class FreeAIChat(LiteLLM):
     """Agno model adapter routing calls through FreeAI intelligent fallback."""
 
     def __init__(self, id: str = "chat", router: Router | None = None, **kwargs: Any) -> None:
+        if LiteLLM is object:
+            raise ImportError("Para usar o adaptador Agno, instale o pacote agno: uv add agno")
         client = router or get_default_router()
         super().__init__(id=id, client=client, **kwargs)

@@ -46,9 +46,14 @@ core  ←  services  ←  adapters
                     ←  main.py
 ```
 
+### Packaging & Execution Modes
+FreeAI is packaged with a decoupled dependency topology:
+* **In-Process SDK Mode (Default `freeai`):** Installs strictly minimal core dependencies (`litellm`, `pydantic-settings`, `pyyaml`). Designed for embedding into external projects (e.g., Agno agents, LangChain pipelines, background tasks) with zero HTTP server or Web UI overhead.
+* **Standalone Application Mode (`freeai[app]`):** Installs the complete suite (`fastapi`, `uvicorn`, `streamlit`, `typer`) for running the OpenAI-compatible REST API Gateway (`/v1`), Typer CLI commands, and Streamlit Dashboard.
+
 ### Data & Execution Flow Patterns
-* **Server Mode:** `Client (cURL / OpenAI SDK)` ➔ `FastAPI Gateway (/v1)` ➔ `Auth Middleware` ➔ `Router (services/llm_router.py)` ➔ `LiteLLM SDK` ➔ `Provider API` ➔ `SSE / JSON`
-* **Direct Import Mode (In-Process):** `Agno / LangChain / Script` ➔ `FreeAI Adapter (adapters/agno.py | langchain.py)` ➔ `Router (services/llm_router.py)` ➔ `LiteLLM SDK` ➔ `Provider API`
+* **Server Mode (`freeai[app]`):** `Client (cURL / OpenAI SDK)` ➔ `FastAPI Gateway (/v1)` ➔ `Auth Middleware` ➔ `Router (services/llm_router.py)` ➔ `LiteLLM SDK` ➔ `Provider API` ➔ `SSE / JSON`
+* **Direct Import Mode (In-Process `freeai`):** `Agno / LangChain / Script` ➔ `FreeAI Adapter (adapters/agno.py | langchain.py)` ➔ `Router (services/llm_router.py)` ➔ `LiteLLM SDK` ➔ `Provider API`
 
 ---
 
@@ -125,8 +130,8 @@ src/freeai/
 All commands must be executed using `uv`:
 
 ```bash
-# Install dependencies
-uv sync --all-groups
+# Install dependencies (including optional application extra and dev tools)
+uv sync --all-groups --all-extras
 
 # Start FreeAI (inicia a UI Streamlit por padrão ou use subcomandos)
 uv run freeai

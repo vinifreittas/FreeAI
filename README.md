@@ -10,25 +10,55 @@
 
 ---
 
-## ⚡ Instalação e Execução
+## ⚡ Modos de Instalação e Uso
 
-Você pode executar o **FreeAI** diretamente sem precisar clonar o repositório:
+O **FreeAI** pode ser utilizado de duas formas: como **aplicação standalone** (servidor gateway REST + painel web) ou como **biblioteca/SDK leve** diretamente no código Python de outros projetos.
 
-### Com `uv` (Recomendado)
+### 1. Modo Aplicação Completa (Standalone Gateway, CLI & Web UI)
+
+Para rodar o painel visual Streamlit e o servidor REST OpenAI-compatível localmente, instale com o extra `[app]`:
 
 ```bash
-uv tool install freeai
+# Como ferramenta global com uv (Recomendado)
+uv tool install "freeai[app]"
 freeai
-```
 
-### Com `pip`
-
-```bash
-pip install freeai
+# Ou com pip
+pip install "freeai[app]"
 freeai
 ```
 
 Ao iniciar, o painel web abrirá automaticamente no navegador (`http://localhost:8501`) e o gateway de API estará ativo em segundo plano (`http://localhost:4000/v1`).
+
+### 2. Modo Biblioteca / SDK Leve (In-Process)
+
+Se você já possui um projeto Python (ex: agente com **Agno**, aplicação com **LangChain** ou bot) e quer apenas o roteamento inteligente com fallback **sem carregar dependências pesadas de servidor ou UI** (zero FastAPI, Uvicorn ou Streamlit):
+
+```bash
+# Instalação minimalista e rápida
+uv add freeai
+# ou: pip install freeai
+```
+
+Use os adaptadores nativos direto no código, sem precisar subir nenhum servidor HTTP:
+
+```python
+# Exemplo com Agno Agent
+from agno.agent import Agent
+from freeai import FreeAIChat
+
+agent = Agent(model=FreeAIChat(id="chat"))
+response = agent.run("Qual a capital da França?")
+print(response.content)
+```
+
+```python
+# Exemplo com LangChain
+from freeai import ChatFreeAI
+
+llm = ChatFreeAI(model="chat")
+print(llm.invoke("Explique o que é Python").content)
+```
 
 ---
 
