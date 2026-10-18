@@ -22,32 +22,48 @@ providers:
     website_url: "https://aistudio.google.com/"
     api_key_env: "GOOGLE_API_KEY"
     models:
-      - id: "gemini-2.5-flash-native-audio-dialog"
-        remote_model: "gemini-2.5-flash-native-audio-dialog"
-        types: ["chat", "tts"]
-
-      - id: "gemini-3-flash-live"
-        remote_model: "gemini-3-flash-live"
+      - id: "gemini-2.5-flash"
+        remote_model: "gemini-2.5-flash"
         types: ["chat"]
 
-      - id: "gemini-3.5-live-translate"
-        remote_model: "gemini-3.5-live-translate"
+      - id: "gemini-2.5-flash-lite"
+        remote_model: "gemini-2.5-flash-lite"
         types: ["chat"]
 
-      - id: "gemini-3.5-transcribe-live"
-        remote_model: "gemini-3.5-transcribe-live"
-        types: ["stt"]
-
-      - id: "gemini-3.8-live"
-        remote_model: "gemini-3.8-live"
+      - id: "gemini-3-flash"
+        remote_model: "gemini-3-flash"
         types: ["chat"]
 
-      - id: "gemini-3.8-live-extended-thinking"
-        remote_model: "gemini-3.8-live-extended-thinking"
-        types: ["reasoning"]
+      - id: "gemini-3.5-flash"
+        remote_model: "gemini-3.5-flash"
+        types: ["chat"]
+
+      - id: "gemini-3.5-flash-lite"
+        remote_model: "gemini-3.5-flash-lite"
+        types: ["chat"]
+
+      - id: "gemini-3.8-flash"
+        remote_model: "gemini-3.8-flash"
+        types: ["chat"]
+
+      - id: "gemini-3.7-flash"
+        remote_model: "gemini-3.7-flash"
+        types: ["chat"]
+
+      - id: "gemini-3.6-flash"
+        remote_model: "gemini-3.6-flash"
+        types: ["chat"]
+
+      - id: "gemini-3.1-flash-lite"
+        remote_model: "gemini-3.1-flash-lite"
+        types: ["chat"]
 
       - id: "gemma-4-26b"
         remote_model: "gemma-4-26b"
+        types: ["chat"]
+
+      - id: "gemma-4-31b"
+        remote_model: "gemma-4-31b"
         types: ["chat"]
 
       - id: "gemini-embedding-2"
@@ -66,57 +82,41 @@ providers:
         remote_model: "gemini-3.8-flash-lite-tts"
         types: ["tts"]
 
-      - id: "gemini-3.8-flash"
-        remote_model: "gemini-3.8-flash"
-        types: ["chat"]
-
-      - id: "gemini-3.7-flash"
-        remote_model: "gemini-3.7-flash"
-        types: ["chat"]
-
-      - id: "gemini-3.6-flash"
-        remote_model: "gemini-3.6-flash"
-        types: ["chat"]
-
-      - id: "gemini-3.5-transcribe"
-        remote_model: "gemini-3.5-transcribe"
-        types: ["stt"]
-
-      - id: "gemini-3.5-flash-lite"
-        remote_model: "gemini-3.5-flash-lite"
-        types: ["chat"]
-
       - id: "gemini-3.1-flash-tts"
         remote_model: "gemini-3.1-flash-tts"
         types: ["tts"]
-
-      - id: "gemini-3-flash"
-        remote_model: "gemini-3-flash"
-        types: ["chat"]
 
       - id: "gemini-2.5-flash-tts"
         remote_model: "gemini-2.5-flash-tts"
         types: ["tts"]
 
-      - id: "gemini-2.5-flash-lite"
-        remote_model: "gemini-2.5-flash-lite"
-        types: ["chat"]
+      - id: "gemini-3.5-transcribe"
+        remote_model: "gemini-3.5-transcribe"
+        types: ["stt"]
 
-      - id: "gemini-2.5-flash"
-        remote_model: "gemini-2.5-flash"
-        types: ["chat"]
+      - id: "gemini-2.5-flash-native-audio-dialog"
+        remote_model: "gemini-2.5-flash-native-audio-dialog"
+        types: ["live"]
 
-      - id: "gemma-4-31b"
-        remote_model: "gemma-4-31b"
-        types: ["chat"]
+      - id: "gemini-3-flash-live"
+        remote_model: "gemini-3-flash-live"
+        types: ["live"]
 
-      - id: "gemini-3.1-flash-lite"
-        remote_model: "gemini-3.1-flash-lite"
-        types: ["chat"]
+      - id: "gemini-3.5-live-translate"
+        remote_model: "gemini-3.5-live-translate"
+        types: ["live"]
 
-      - id: "gemini-3.5-flash"
-        remote_model: "gemini-3.5-flash"
-        types: ["chat"]
+      - id: "gemini-3.5-transcribe-live"
+        remote_model: "gemini-3.5-transcribe-live"
+        types: ["live"]
+
+      - id: "gemini-3.8-live"
+        remote_model: "gemini-3.8-live"
+        types: ["live"]
+
+      - id: "gemini-3.8-live-extended-thinking"
+        remote_model: "gemini-3.8-live-extended-thinking"
+        types: ["live"]
 
   - id: "groq"
     display_name: "Groq Cloud"

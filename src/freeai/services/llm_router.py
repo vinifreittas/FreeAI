@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import time
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -6,6 +7,10 @@ from typing import Any
 import litellm
 
 litellm.suppress_debug_info = True
+litellm.set_verbose = False
+litellm.turn_off_message_logging = True
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+logging.getLogger("LiteLLM").propagate = False
 
 
 class StreamResponse:
