@@ -7,7 +7,7 @@ app = typer.Typer(help="Status dos provedores e rotas mapeadas.")
 
 @app.command(name="status")
 def status() -> None:
-    """Exibe o diagnóstico dos provedores, modelos mapeados e configurações ativas."""
+    """Display diagnostics for providers, mapped models, and active settings."""
     settings = get_settings()
     catalog = build_router_catalog(settings)
     vault = load_vault()

@@ -20,7 +20,7 @@ This document provides high-level architectural context, coding conventions, rep
 
 ### Environment & Configuration Files
 * **Settings Config:** `src/freeai/core/config.yaml` (overridable via `SETTINGS_CONFIG_PATH` or `MODELS_CONFIG_PATH`)
-* **Protected Secrets Vault:** `~/.freeai/vault.json` (cifrado localmente via machine-derived keystream, pasta 0700 e permissão estrita `chmod 600`)
+* **Protected Secrets Vault:** `~/.freeai/vault.json` (encrypted locally with a machine-derived keystream, directory mode 0700, and strict file permission `chmod 600`)
 
 ---
 
@@ -120,8 +120,8 @@ src/freeai/
 4. **Gateway Subsystem (`api/`)**: FastAPI application delivering OpenAI-compatible REST endpoints (`/v1/chat/completions` with SSE streaming, `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/models`). Controlled in background via `gateway_manager.py` or foreground via CLI `freeai serve`.
 5. **Presentation Layer (`interface/` & `main.py`)**:
    * **Typer CLI (`interface/cli/commands/`)**: Modular commands (`serve`, `setup`, `status`, `test`, `ui`).
-   * **Streamlit UI (`interface/web/app.py`, `test_view.py`)**: Dashboard visual, métricas, teste de modelos em tempo real, playground e cofre.
-   * **Composition Root (`main.py`)**: Execução padrão sem subcomandos dispara o Streamlit automaticamente.
+   * **Streamlit UI (`interface/web/app.py`, `test_view.py`)**: Visual dashboard, metrics, real-time model testing, playground, and vault management.
+   * **Composition Root (`main.py`)**: Default execution without subcommands launches Streamlit automatically.
 
 ---
 
@@ -133,7 +133,7 @@ All commands must be executed using `uv`:
 # Install dependencies (including optional application extra and dev tools)
 uv sync --all-groups --all-extras
 
-# Start FreeAI (inicia a UI Streamlit por padrão ou use subcomandos)
+# Start FreeAI (launches Streamlit UI by default, or use subcommands)
 uv run freeai
 uv run freeai status
 uv run freeai test

@@ -8,7 +8,7 @@ from freeai.interface.cli.commands.ui import app as ui_app
 
 
 def register_commands(cli: typer.Typer) -> None:
-    """Registra todos os subcomandos modulares no Typer principal."""
+    """Register all modular subcommands in the main Typer app."""
     cli.add_typer(serve_app)
     cli.add_typer(setup_app)
     cli.add_typer(status_app)

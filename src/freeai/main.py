@@ -13,7 +13,7 @@ register_commands(app)
 
 @app.callback(invoke_without_command=True)
 def default_callback(ctx: typer.Context) -> None:
-    """Se nenhum subcomando for fornecido, inicia a interface gráfica Streamlit."""
+    """If no subcommand is provided, launch the Streamlit graphical interface."""
     if ctx.invoked_subcommand is None:
         from freeai.interface.web.app import main as run_web
 

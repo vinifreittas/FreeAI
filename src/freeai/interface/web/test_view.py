@@ -8,7 +8,7 @@ from freeai.services.model_tester import ModelTestResult, test_all_models
 
 
 def render_test_view(settings: Settings) -> None:
-    """Renderiza a aba interativa de teste de conectividade dos modelos conectados."""
+    """Render the interactive connectivity test tab for connected models."""
     st.subheader("Diagnóstico e Teste de Conexão dos Modelos")
     st.caption(
         "Verificação em tempo real de latência e disponibilidade dos modelos conectados com provedores aprovados."

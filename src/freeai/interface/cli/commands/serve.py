@@ -13,7 +13,7 @@ def serve(
     port: int = typer.Option(0, "--port", "-p", help="Porta HTTP do Gateway (padrão das configurações)"),
     reload: bool = typer.Option(False, "--reload", help="Ativar auto-reload"),
 ) -> None:
-    """Inicia o servidor FastAPI Gateway em modo headless (em primeiro plano)."""
+    """Start the FastAPI Gateway server in headless mode (foreground)."""
     settings = get_settings()
     final_port = port if port > 0 else settings.PORT
     final_host = host or settings.HOST
