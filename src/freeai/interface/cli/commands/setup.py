@@ -11,7 +11,7 @@ app = typer.Typer(help="Configuração interativa de chaves e rede.")
 @app.command(name="config")
 @app.command(name="setup")
 def setup() -> None:
-    """Assistente simples no terminal para configurar chaves de API e rede no cofre seguro."""
+    """Simple terminal assistant to configure API keys and network settings in the secure vault."""
     vault = load_vault()
     settings = get_settings()
 

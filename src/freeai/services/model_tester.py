@@ -26,7 +26,7 @@ async def test_single_model(
     api_key: str | None = None,
     timeout: float = 10.0,
 ) -> ModelTestResult:
-    """Executa um teste de conectividade pontual para um único modelo."""
+    """Run a one-off connectivity test for a single model."""
     if not api_key:
         return ModelTestResult(
             model_id=target.target_id,
@@ -151,7 +151,7 @@ async def test_all_models(
     max_concurrency: int = 5,
     timeout: float = 10.0,
 ) -> list[ModelTestResult]:
-    """Testa todos os modelos conectados dos provedores ativos e configurados."""
+    """Test all connected models from active, configured providers."""
     if settings is None:
         settings = get_settings()
 

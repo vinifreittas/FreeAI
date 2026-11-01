@@ -1,7 +1,7 @@
 # 🤖 FreeAI
 
-> **API Gateway e LLM Router inteligente para provedores de IA gratuitos e freemium.**  
-> Unifique Google Gemini, Groq e OpenRouter em um único endpoint local compatível com a API OpenAI, com fallback automático e interface web.
+> **Smart API Gateway and LLM Router for free and freemium AI providers.**  
+> Unify Google Gemini, Groq, and OpenRouter behind a single local OpenAI-compatible endpoint with automatic fallback and a web interface.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![uv](https://img.shields.io/badge/managed_by-uv-DE5FE9.svg?logo=astral&logoColor=white)](https://docs.astral.sh/uv/)
@@ -10,67 +10,67 @@
 
 ---
 
-## ⚡ Modos de Instalação e Uso
+## ⚡ Installation and Usage Modes
 
-O **FreeAI** pode ser utilizado de duas formas: como **aplicação standalone** (servidor gateway REST + painel web) ou como **biblioteca/SDK leve** diretamente no código Python de outros projetos.
+**FreeAI** can be used in two ways: as a **standalone application** (REST gateway server + web dashboard) or as a **lightweight library/SDK** directly in other Python projects.
 
-### 1. Modo Aplicação Completa (Standalone Gateway, CLI & Web UI)
+### 1. Full Application Mode (Standalone Gateway, CLI & Web UI)
 
-Para rodar o painel visual Streamlit e o servidor REST OpenAI-compatível localmente, instale com o extra `[app]`:
+To run the Streamlit dashboard and local OpenAI-compatible REST server, install with the `[app]` extra:
 
 ```bash
-# Como ferramenta global com uv (Recomendado)
+# As a global tool with uv (Recommended)
 uv tool install "freeai[app]"
 freeai
 
-# Ou com pip
+# Or with pip
 pip install "freeai[app]"
 freeai
 ```
 
-Ao iniciar, o painel web abrirá automaticamente no navegador (`http://localhost:8501`) e o gateway de API estará ativo em segundo plano (`http://localhost:4000/v1`).
+When started, the web dashboard opens automatically in your browser (`http://localhost:8501`) and the API gateway runs in the background (`http://localhost:4000/v1`).
 
-### 2. Modo Biblioteca / SDK Leve (In-Process)
+### 2. Lightweight Library / SDK Mode (In-Process)
 
-Se você já possui um projeto Python (ex: agente com **Agno**, aplicação com **LangChain** ou bot) e quer apenas o roteamento inteligente com fallback **sem carregar dependências pesadas de servidor ou UI** (zero FastAPI, Uvicorn ou Streamlit):
+If you already have a Python project (e.g., an **Agno** agent, **LangChain** app, or bot) and only need smart fallback routing **without heavy server/UI dependencies** (no FastAPI, Uvicorn, or Streamlit):
 
 ```bash
-# Instalação minimalista e rápida
+# Minimal and fast install
 uv add freeai
-# ou: pip install freeai
+# or: pip install freeai
 ```
 
-Use os adaptadores nativos direto no código, sem precisar subir nenhum servidor HTTP:
+Use the native adapters directly in code, without starting any HTTP server:
 
 ```python
-# Exemplo com Agno Agent
+# Agno Agent example
 from agno.agent import Agent
 from freeai import FreeAIChat
 
 agent = Agent(model=FreeAIChat(id="chat"))
-response = agent.run("Qual a capital da França?")
+response = agent.run("What is the capital of France?")
 print(response.content)
 ```
 
 ```python
-# Exemplo com LangChain
+# LangChain example
 from freeai import ChatFreeAI
 
 llm = ChatFreeAI(model="chat")
-print(llm.invoke("Explique o que é Python").content)
+print(llm.invoke("Explain what Python is").content)
 ```
 
 ---
 
-## 🚀 Como Usar
+## 🚀 How to Use
 
-1. **Configure suas chaves:** Abra a aba **Configurações** no painel web e insira suas chaves de API (Google Gemini, Groq ou OpenRouter). Suas credenciais são armazenadas de forma criptografada no seu cofre local (`~/.freeai/vault.json`).
-2. **Conecte suas aplicações:** Aponte qualquer biblioteca, IDE ou ferramenta para o FreeAI:
+1. **Configure your keys:** Open the **Settings** tab in the web dashboard and enter your API keys (Google Gemini, Groq, or OpenRouter). Credentials are stored encrypted in your local vault (`~/.freeai/vault.json`).
+2. **Connect your apps:** Point any library, IDE, or tool to FreeAI:
    - **Base URL:** `http://localhost:4000/v1`
-   - **API Key:** `sk-freeai-local` (ou o Bearer token configurado)
-   - **Model:** `chat`, `coder` ou `embed` (com fallback automático se ocorrer rate limit)
+   - **API Key:** `sk-freeai-local` (or your configured token)
+   - **Model:** `chat`, `coder`, or `embed` (with automatic fallback on rate limit)
 
-### Exemplo Rápido (Python)
+### Quick Example (Python)
 
 ```python
 from openai import OpenAI
@@ -79,18 +79,18 @@ client = OpenAI(base_url="http://localhost:4000/v1", api_key="sk-freeai-local")
 
 response = client.chat.completions.create(
     model="chat",
-    messages=[{"role": "user", "content": "Olá, FreeAI!"}],
+    messages=[{"role": "user", "content": "Hello, FreeAI!"}],
 )
 
 print(response.choices[0].message.content)
 ```
 
-Compatível nativamente com **Cursor**, **VS Code (Cline / Continue)**, **LangChain**, **Agno** e qualquer ferramenta que suporte a API da OpenAI.
+Natively compatible with **Cursor**, **VS Code (Cline / Continue)**, **LangChain**, **Agno**, and any tool that supports the OpenAI API.
 
 ---
 
-## 🛠️ Para Desenvolvedores & Contribuidores
+## 🛠️ For Developers & Contributors
 
-Se você deseja rodar a partir do código-fonte, contribuir ou entender a arquitetura do projeto:
+If you want to run from source, contribute, or understand the project architecture:
 
-👉 Consulte o **[`AGENTS.md`](AGENTS.md)** 
+👉 See **[`AGENTS.md`](AGENTS.md)**

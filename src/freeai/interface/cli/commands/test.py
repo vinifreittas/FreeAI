@@ -16,7 +16,7 @@ def test_models(
     timeout: float = typer.Option(10.0, "--timeout", "-t", help="Timeout em segundos por modelo"),
     concurrency: int = typer.Option(5, "--concurrency", "-c", help="Número máximo de requisições concorrentes"),
 ) -> None:
-    """Testa todos os modelos conectados de provedores aprovados/configurados."""
+    """Test all connected models from approved/configured providers."""
     settings = get_settings()
     active_providers = [p for p in settings.providers if p.api_key]
 
